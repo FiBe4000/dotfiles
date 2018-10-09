@@ -1,6 +1,6 @@
 #!/bin/bash
 
-icon_path="$HOME/.xmonad/icons"
+icon_path="$HOME/.dotfiles/icons"
 battery_path="/sys/class/power_supply/BAT0"
 percentage=`cat $battery_path/capacity`
 status=`cat $battery_path/status`

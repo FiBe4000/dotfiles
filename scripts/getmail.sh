@@ -3,7 +3,7 @@
 # Change the question marks to your profile id. The thunderbird plugin Unread-counts need to be installed for this to work.
 str=$(echo $(head -c 4 ~/.thunderbird/??????.default/unread-counts))
 str2=$(echo $str | grep -o -E '[0-9]+' | head -1) # | sed -e 's/^0\+//')
-icon="<icon=$HOME/.xmonad/icons/mail.xbm/>"
+icon="<icon=$HOME/.dotfiles/icons/mail.xbm/>"
 
 if [[ $str == "Coun" ]]; then
     echo "<fc=#993737>$icon</fc>"

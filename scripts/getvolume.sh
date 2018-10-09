@@ -1,10 +1,10 @@
 #!/bin/sh
 
-icon_full_vol="<icon=$HOME/.xmonad/icons/spkr_01.xbm/>"
-icon_mid_vol="<icon=$HOME/.xmonad/icons/spkr_50.xbm/>"
-icon_midlow_vol="<icon=$HOME/.xmonad/icons/spkr_25.xbm/>"
-icon_low_vol="<icon=$HOME/.xmonad/icons/spkr_00.xbm/>"
-icon_mute_vol="<icon=$HOME/.xmonad/icons/spkr_mute.xbm/>"
+icon_full_vol="<icon=$HOME/.dotfiles/icons/spkr_01.xbm/>"
+icon_mid_vol="<icon=$HOME/.dotfiles/icons/spkr_50.xbm/>"
+icon_midlow_vol="<icon=$HOME/.dotfiles/icons/spkr_25.xbm/>"
+icon_low_vol="<icon=$HOME/.dotfiles/icons/spkr_00.xbm/>"
+icon_mute_vol="<icon=$HOME/.dotfiles/icons/spkr_mute.xbm/>"
 high=75
 mid=50
 low=25
