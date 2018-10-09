@@ -34,14 +34,12 @@ fi
 
 xsetroot -cursor_name left_ptr
 setxkbmap se
-compton -CGb --no-fading-openclose
+compton --config ~/.config/compton.conf -b
 stalonetray &
 nm-applet &
-blueman-applet &
-udiskie &
-xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
+#xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 dropbox &
 /home/fibe/.xmonad/setwallpaper.sh
-libinput-gestures-setup start
+udiskie &
 urxvtd -q -f -o
 exec xmonad
