@@ -1,0 +1,29 @@
+decorations none
+transparent false 
+dockapp_mode none
+sticky true
+window_type dock
+window_layer bottom
+
+# Icons stick to right side of tray
+icon_gravity E
+
+# Four icons wide, one high, 0 pixels from right, 0 from top
+geometry 4x1-0+0
+max_geometry 4x1-0+0
+
+# Black background
+background "#002b36"
+
+# Doesn't appear in a task bar (not a problem for us?)
+skip_taskbar
+
+# Icons are 21 pixels high
+icon_size 21
+kludges fix_window_pos,force_icons_size
+
+# Tell xmonad "Stand back, I got this"
+window_strut none
+
+#tint_color "#073642"
+#tint_level 240

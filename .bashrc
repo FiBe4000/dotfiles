@@ -16,4 +16,7 @@ alias backup='/home/fibe/projects/bash_scripts/backup.sh'
 export VISUAL="vim"
 export EDITOR="$VISUAL"
 
+# Set Vi mode
+set -o vi
+
 echo; screenfetch; echo
