@@ -41,7 +41,7 @@ blueman-applet &
 udiskie &
 xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 dropbox &
-/home/fibe/.xmonad/setwallpaper.sh
+/home/fibe/.xmonad/scripts/setwallpaper.sh
 libinput-gestures-setup start
 urxvtd -q -f -o
 exec xmonad
