@@ -23,4 +23,4 @@ export PAGER="/bin/sh -c \"unset PAGER;col -b -x | \
 # Set Vi mode
 set -o vi
 
-echo; screenfetch; echo
+echo; neofetch; echo

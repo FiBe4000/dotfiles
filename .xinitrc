@@ -39,7 +39,7 @@ stalonetray &
 nm-applet &
 #xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 dropbox &
-/home/fibe/.xmonad/setwallpaper.sh
+/home/fibe/.xmonad/scripts/setwallpaper.sh
 udiskie &
 urxvtd -q -f -o
 exec xmonad
