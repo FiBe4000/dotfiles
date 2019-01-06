@@ -14,3 +14,6 @@ ln -s $path/.xserverrc $HOME/.xserverrc
 ln -s $path/libinput-gestures.conf $HOME/.config/libinput-gestures.conf
 sudo ln -s $path/tlp /etc/default/tlp
 ln -s $path/zathurarc $HOME/.config/zathura/zathurarc
+ln -s $path/.zshrc $HOME/.zshrc
+sudo ln -s $path/zsh-autosuggestions-config.zsh /usr/share/oh-my-zsh/custom/zsh-autosuggestions-config-zsh
+ln -s $path/.zprofile $HOME/.zprofile
