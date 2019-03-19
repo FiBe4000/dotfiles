@@ -4,6 +4,7 @@ path=`pwd`
 
 ln -s $path/.bash_profile $HOME/.bash_profile
 ln -s $path/.bashrc $HOME/.bashrc
+ln -s $path/compton.conf $HOME/.config/compton.conf
 ln -s $path/.nvidia-settings-rc $HOME/.nvidia-settings-rc
 ln -s $path/.stalonetrayrc $HOME/.stalonetrayrc
 ln -s $path/.xinitrc $HOME/.xinitrc

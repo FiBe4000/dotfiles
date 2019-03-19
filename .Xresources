@@ -8,8 +8,8 @@
 #define S_base2         #eee8d5
 #define S_base3         #fdf6e3
 
-*background:            [80]S_base03
-*foreground:            [80]S_base0
+*background:            S_base03
+*foreground:            S_base0
 *fadeColor:             S_base03
 *cursorColor:           S_base1
 *pointerColorBackground:S_base01
@@ -59,7 +59,7 @@
 !! urxvt config
 !!URxvt.font:             xft: DejaVu Sans Mono for Powerline:size=11,xft: Symbola:size=11,xft: Unifont
 URxvt.font:             xft: DejaVuSansMono Nerd Font:pixelsize=13, xft: DejaVuSansMono Nerd Font:pixelsize=11
-URxvt*termName:         rxvt
+URxvt*termName:         rxvt-unicode-256color
 URxvt*scrollBar:        false
 URxvt*perl-lib:         /usr/lib/urxvt/perl/
 URxvt*perl-ext-common:  default,matcher
@@ -71,16 +71,16 @@ URxvt*iso14755:         false
 
 Xft*antialias:          true
 
- Xmessage.form.okay.shapeStyle:         rectangle
- Xmessage.form.okay.background:         S_base03
- Xmessage.form.okay.foreground:         S_base0
-Xmessage*Background:                    S_base03
-Xmessage*Foreground:                    S_base0
- Xmessage*buttons:                       OK
- Xmessage*defaultButton:                 OK
- Xmessage.form.message.Scroll:          WhenNeeded
- Xmessage*Font:                         ttf: DejaVu Sans Mono:size=11
- Xmessage*borderWidth:                  0
- Xmessage*Text.borderWidth:             0
- Xmessage*Command.shapeStyle:           rectangle
- Xmessage*Text.?.cursorColor:           white
+Xmessage.form.okay.shapeStyle:         rectangle
+Xmessage.form.okay.background:         S_base03
+Xmessage.form.okay.foreground:         S_base0
+Xmessage*Background:                   S_base03
+Xmessage*Foreground:                   S_base0
+Xmessage*buttons:                      OK
+Xmessage*defaultButton:                OK
+Xmessage.form.message.Scroll:          WhenNeeded
+Xmessage*Font:                         ttf: DejaVu Sans Mono:size=11
+Xmessage*borderWidth:                  0
+Xmessage*Text.borderWidth:             0
+Xmessage*Command.shapeStyle:           rectangle
+Xmessage*Text.?.cursorColor:           white

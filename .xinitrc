@@ -34,6 +34,7 @@ fi
 
 xsetroot -cursor_name left_ptr
 setxkbmap se
+xmodmap ~/.dotfiles/.escremap
 compton --config ~/.config/compton.conf -b
 stalonetray &
 nm-applet &

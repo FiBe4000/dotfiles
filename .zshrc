@@ -101,14 +101,14 @@ plugins=(
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias gotop="gotop -c solarized"
-
-bindkey '^R' history-incremental-search-backward
+alias grep="grep --color=auto"
+alias dmesg="dmesg --color=always"
 
 export KEYTIMEOUT=1
 export VISUAL=vim
 export EDITOR="$VISUAL"
-
-POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(vi_mode background_jobs)
+export LESSOPEN="| /usr/bin/source-highlight-esc.sh %s"
+export LESS="-R "
 
 ZSH_CACHE_DIR=$HOME/.cache/oh-my-zsh
 if [[ ! -d $ZSH_CACHE_DIR ]]; then
@@ -116,4 +116,11 @@ if [[ ! -d $ZSH_CACHE_DIR ]]; then
 fi
 
 source $ZSH/oh-my-zsh.sh
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=10'
+POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(vi_mode background_jobs)
+
+bindkey '^ ' autosuggest-accept
+bindkey '^R' history-incremental-search-backward
+
 neofetch
