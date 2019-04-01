@@ -58,7 +58,7 @@
 
 !! urxvt config
 !!URxvt.font:             xft: DejaVu Sans Mono for Powerline:size=11,xft: Symbola:size=11,xft: Unifont
-URxvt.font:             xft: DejaVuSansMono Nerd Font:pixelsize=13, xft: DejaVuSansMono Nerd Font:pixelsize=11
+URxvt.font:             xft: DejaVuSansMono Nerd Font:pixelsize=13, xft: DejaVuSansMono Nerd Font:pixelsize=12, xft: DejaVuSansMono Nerd Font:pixelsize=11, xft: DejaVuSansMono Nerd Font:pixelsize=10, xft: DejaVuSansMono Nerd Font:pixelsize=9, xft: DejaVuSansMono Nerd Font:pixelsize=8, xft: DejaVuSansMono Nerd Font:pixelsize=7
 URxvt*termName:         rxvt-unicode-256color
 URxvt*scrollBar:        false
 URxvt*perl-lib:         /usr/lib/urxvt/perl/
