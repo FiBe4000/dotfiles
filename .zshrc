@@ -127,5 +127,6 @@ POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="↳ "
 
 bindkey '^ ' autosuggest-accept
 bindkey '^R' history-incremental-search-backward
+bindkey '^[[Z' reverse-menu-complete
 
 neofetch
