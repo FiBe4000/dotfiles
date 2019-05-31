@@ -13,13 +13,13 @@ geometry 4x1-0+0
 max_geometry 4x1-0+0
 
 # Black background
-background "#002b36"
+background "#0f1611"
 
 # Doesn't appear in a task bar (not a problem for us?)
 skip_taskbar
 
 # Icons are 21 pixels high
-icon_size 22
+icon_size 24
 kludges fix_window_pos,force_icons_size
 
 # Tell xmonad "Stand back, I got this"
