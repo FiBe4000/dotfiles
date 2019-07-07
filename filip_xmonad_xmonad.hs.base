@@ -82,7 +82,7 @@ myKeys conf@(XConfig {{XMonad.modMask = modMask}}) = M.fromList $
       ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)
 
     -- launch dmenu
-    , ((modMask,               xK_p     ), spawn "rofi -show run")
+    , ((modMask,               xK_p     ), spawn "rofi -show drun")
 
     -- close focused window
     , ((modMask .|. shiftMask, xK_c     ), kill)
@@ -169,7 +169,7 @@ myKeys conf@(XConfig {{XMonad.modMask = modMask}}) = M.fromList $
     -- mod-shift-{{w,e,r}}, Move client to screen 1, 2, or 3
     --
     [((m .|. modMask, key), screenWorkspace sc >>= flip whenJust (windows . f))
-        | (key, sc) <- zip [xK_w, xK_e, xK_r] [1,0,2]
+        | (key, sc) <- zip [xK_w, xK_e, xK_r] [2,0,1]
         , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]]
     ++
 
@@ -179,10 +179,10 @@ myKeys conf@(XConfig {{XMonad.modMask = modMask}}) = M.fromList $
     ((modMask .|. controlMask .|. shiftMask , xK_q), spawn "systemctl poweroff"),
     ((modMask .|. controlMask .|. shiftMask , xK_r), spawn "systemctl reboot"),
     ((modMask .|. controlMask .|. shiftMask , xK_w), spawn "wpg -m"),
-    ((shiftMask , xF86XK_MonBrightnessDown),         spawn "xbacklight -dec 5"),
-    ((shiftMask , xF86XK_MonBrightnessUp),           spawn "xbacklight -inc 5"),
-    ((0 , xF86XK_MonBrightnessDown),                 spawn "xbacklight -dec 10"),
-    ((0 , xF86XK_MonBrightnessUp),                   spawn "xbacklight -inc 10"),
+    ((shiftMask , xF86XK_MonBrightnessDown),         spawn "xbacklight -dec 5 -time 200 -steps 10"),
+    ((shiftMask , xF86XK_MonBrightnessUp),           spawn "xbacklight -inc 5 -time 200 -steps 10"),
+    ((0 , xF86XK_MonBrightnessDown),                 spawn "xbacklight -dec 10 -time 200 -steps 10"),
+    ((0 , xF86XK_MonBrightnessUp),                   spawn "xbacklight -inc 10 -time 200 -steps 10"),
     ((0 , xF86XK_KbdBrightnessDown),                 spawn "asus-kbd-backlight down"),
     ((0 , xF86XK_KbdBrightnessUp),                   spawn "asus-kbd-backlight up"),
     ((0 , xF86XK_AudioLowerVolume),                  spawn "/usr/bin/pulseaudio-ctl down"),--"amixer set Master on && amixer set Headphone on && amixer set Master 2-"),

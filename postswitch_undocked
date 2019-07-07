@@ -1,0 +1,4 @@
+#!/bin/bash
+setxkbmap se
+xmodmap ~/.dotfiles/.escremap
+wpg -m

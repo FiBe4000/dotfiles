@@ -68,7 +68,6 @@ plugins=(
   colored-man-pages
   zsh-syntax-highlighting
   zsh-autosuggestions
-  zsh-256color
   vi-mode
 )
 

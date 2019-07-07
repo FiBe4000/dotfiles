@@ -5,6 +5,13 @@ usermodmap=$HOME/.Xmodmap
 sysresources=/etc/X11/xinit/.Xresources
 sysmodmap=/etc/X11/xinit/.Xmodmap
 
+# Fix scaling
+
+export GDK_SCALE=1
+export GDK_DPI_SCALE=0.5
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_SCALE_FACTOR=1
+
 # merge in defaults and keymaps
 
 if [ -f $sysresources ]; then
@@ -35,13 +42,17 @@ fi
 xsetroot -cursor_name left_ptr
 setxkbmap se
 xmodmap ~/.dotfiles/.escremap
+xbacklight -ctrl tpacpi::kbd_backlight -set 100
 compton --config ~/.config/compton.conf -b
 stalonetray &
+#trayer --monitor primary --edge top --align right --widthtype percent --width 5 --height 24 &
 nm-applet &
-#xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
+blueman-applet &
+xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 dropbox &
 #/home/fibe/.xmonad/scripts/setwallpaper.sh
 wpg -m
 udiskie &
+libinput-gestures-setup start
 urxvtd -q -f -o
 exec xmonad

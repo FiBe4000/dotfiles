@@ -1,12 +1,12 @@
 Config
-  { font             = "xft:Helvetica Neue:antialiasing=true:size=5"
+  {{ font             = "xft:Helvetica Neue:antialiasing=true:size=5"
   , additionalFonts  = ["xft:DejaVuSansMono Nerd Font:size=6"]
   , borderColor      = "#073642"
   , border           = NoBorder
-  , bgColor          = "#0f1611"
-  , fgColor          = "#73879D"
+  , bgColor          = "{color0}"
+  , fgColor          = "{color6}"
   , alpha            = 255
-  , position         = Static { xpos = 0 , ypos = 0, width = 2464, height = 24 }
+  , position         = Static {{ xpos = 0 , ypos = 0, width = 2464, height = 24 }}
   , textOffset       = -1
   , iconOffset       = -1
   , lowerOnStart     = True
@@ -19,7 +19,7 @@ Config
   , commands         = 
     [ Run MultiCpu
         [ "-t", "<icon=cpu.xbm/>  <total0>% <total1>% <total2>% <total3>% <total4>% <total5>% <total6>% <total7>%" 
-        , "-L", "5",  "-l","#507578"
+        , "-L", "5",  "-l","{color10}"
         , "-H", "50", "-h","#dc322f"
         ] 20
     , Run Memory
@@ -30,8 +30,8 @@ Config
         "date" 10
     , Run CoreTemp
         ["-t", "<icon=temp.xbm/>  <core0>°C <core1>°C <core2>°C <core3>°C"
-        , "-L", "45", "-l", "#4288b6"
-        , "-n", "#73879D"
+        , "-L", "45", "-l", "{color12}"
+        , "-n", "{color6}"
         , "-H", "70", "-h", "#dc322f"
         ] 20
     , Run DynNetwork
@@ -44,6 +44,6 @@ Config
     --, Run Com "/home/filip/.dotfiles/scripts/getpowgov.sh"  [] "gov"  5
     ]
   , sepChar = "%"
-  , alignSep = "}{"
-  , template = " <fc=#808972><icon=arch.xbm/></fc> %StdinReader% }{%multicpu% <fn=1><fc=#73879D></fc></fn> %coretemp% <fn=1><fc=#73879D></fc></fn> %memory% <fn=1><fc=#73879D></fc></fn> %dynnetwork% <fn=1><fc=#586e75></fc></fn> %battery% <fn=1><fc=#73879D></fc></fn> %vol% <fn=1><fc=#73879D></fc></fn> <fc=#808972>%date%</fc> <fn=1><fc=#73879D></fc></fn> "-- %mail% "
-  }
+  , alignSep = "}}{{"
+  , template = " <fc={color3}><icon=arch.xbm/></fc> %StdinReader% }}{{%multicpu% <fn=1><fc={color6}></fc></fn> %coretemp% <fn=1><fc={color6}></fc></fn> %memory% <fn=1><fc={color6}></fc></fn> %dynnetwork% <fn=1><fc=#586e75></fc></fn> %battery% <fn=1><fc={color6}></fc></fn> %vol% <fn=1><fc={color6}></fc></fn> <fc={color3}>%date%</fc> <fn=1><fc={color6}></fc></fn> "-- %mail% "
+  }}
