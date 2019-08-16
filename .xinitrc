@@ -9,8 +9,6 @@ sysmodmap=/etc/X11/xinit/.Xmodmap
 
 export GDK_SCALE=1
 export GDK_DPI_SCALE=0.5
-export QT_AUTO_SCREEN_SCALE_FACTOR=0
-export QT_SCALE_FACTOR=1
 
 # merge in defaults and keymaps
 
@@ -39,20 +37,26 @@ if [ -d /etc/X11/xinit/xinitrc.d ] ; then
  unset f
 fi
 
+# For gnome-keyring (used by Evolution)
+eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
+export SSH_AUTH_SOCK
+
 xsetroot -cursor_name left_ptr
 setxkbmap se
 xmodmap ~/.dotfiles/.escremap
+xcalib -o eDP-1 ~/.dotfiles/other/B140QAN02_0.icm
 xbacklight -ctrl tpacpi::kbd_backlight -set 100
 compton --config ~/.config/compton.conf -b
-stalonetray &
+#stalonetray &
 #trayer --monitor primary --edge top --align right --widthtype percent --width 5 --height 24 &
 nm-applet &
 blueman-applet &
 xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
-dropbox &
+#dropbox &
 #/home/fibe/.xmonad/scripts/setwallpaper.sh
 wpg -m
 udiskie &
 libinput-gestures-setup start
 urxvtd -q -f -o
+autorandr --change &
 exec xmonad

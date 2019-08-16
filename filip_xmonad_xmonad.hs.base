@@ -16,46 +16,50 @@ import XMonad.Layout.GridVariants
 import XMonad.Layout.NoBorders
 import XMonad.Layout.MultiColumns
 import XMonad.Layout.Spacing
+import System.IO
+import System.Exit
+
 import qualified XMonad.Layout.Fullscreen as F
 import qualified Data.Map as M
 import qualified XMonad.StackSet as W
-import System.IO
-import System.Exit
+import qualified DBus as D
+import qualified DBus.Client as D
+import qualified Codec.Binary.UTF8.String as UTF8
 
 myModMask :: KeyMask
 myModMask = mod1Mask
 
 myTerminal = "urxvtc"
 
-myNormalBorderColor  = "{color8}"
-myFocusedBorderColor = "{color1}"
+myNormalBorderColor  = "{color2}"
+myFocusedBorderColor = "{color7}"
 myBorderWidth        = 3
 
 -- Workspaces
-myWorkspaces = ["1 - Web", "2 - Terminals", "3 - Code", "4 - Games", "5 - Chat", "6 - Music", "7 - Media", "8 - Etc1", "9 - Etc2"]
+myWorkspaces = ["1 - Web", "2 - Terminals", "3 - Code", "4 - Mail", "5 - Chat", "6 - Music", "7 - VM", "8 - Etc1", "9 - Etc2"]
 
 -- Define the workspace an app goes to
 myManageHook = composeAll . concat $
   [
       [resource  =? "stalonetray"   --> doIgnore]
-    , [className =? "Steam"         --> doShift "4 - Games"]
     , [className =? "Firefox"       --> doShift "1 - Web"]
     , [className =? "Google-chrome" --> doShift "1 - Web"]
-    , [className =? "Sky"           --> doShift "5 - Chat"]
+    , [className =? "Evolution"     --> doShift "4 - Mail"]
+    , [className =? "Pidgin"        --> doShift "5 - Chat"]
     , [className =? "Slack"         --> doShift "5 - Chat"]
     , [className =? "yakyak"        --> doShift "5 - Chat"]
     , [className =? "discord"       --> doShift "5 - Chat"]
-    , [className =? "Kodi"          --> doShift "7 - Media"]
+    , [className =? "Kodi"          --> doShift "8 - Etc"]
     , [className =? "Kodi"          --> doFullFloat]
     , [className =? "Xmessage"      --> doCenterFloat]
     , [isFullscreen --> (doF W.focusUp <+> doFullFloat)]
   ]
 
 myLayout     =  avoidStruts $ smartBorders $ spacingRaw False (Border 0 5 5 5) False (Border 5 5 5 5) False  $
-                onWorkspaces ["1- Web", "3 - Code", "4 - Mail", "6 - Music", "7 - Media", "8 - Etc1", "9 - Etc2"] customLayout $
+                onWorkspaces ["1- Web", "3 - Code", "4 - Mail", "6 - Music", "8 - Etc1", "9 - Etc2"] customLayout $
                 onWorkspaces ["2 - Terminals"] terminalLayout $
                 onWorkspaces ["5 - Chat"] chatLayout $
-                onWorkspaces ["7 - Media"] mediaLayout $
+                onWorkspaces ["7 - VM"] mediaLayout $
                 customLayout
 
 customLayout    = layoutHook defaultConfig
@@ -63,15 +67,29 @@ terminalLayout  = TallGrid 2 2 (2/3) (16/10) (5/100) ||| customLayout
 chatLayout      = customLayout ||| multiCol [1] 2 (3/100) (1/5) ||| Tall 1 (3/100) (1/5)
 mediaLayout     = F.fullscreenFull Full
 
-fadeInactiveLogHook' = fadeOutLogHook . fadeIf (isUnfocused <&&> (propertyToQuery (Not (ClassName "Google-chrome") `And` (Not (ClassName "Kodi")))))
+myLogHook :: D.Client -> PP
+myLogHook dbus = def
+ {{ ppOutput  = dbusOutput dbus
+  , ppCurrent = wrap ("%{{F" ++ xmobarWSColor ++ "}} ") " %{{F-}}"
+  , ppTitle   = wrap ("%{{F" ++ xmobarTitleColor ++ "}} ") " %{{F-}}" . shorten 100
+  , ppSep     = " \57521 "
+  }}
 
-myLogHook :: X ()
---myLogHook = fadeInactiveLogHook' fadeAmount >> ewmhDesktopsLogHook
-    --where fadeAmount = 0.6
-myLogHook = ewmhDesktopsLogHook
+-- Emit a DBus signal on log updates
+dbusOutput :: D.Client -> String -> IO ()
+dbusOutput dbus str = do
+    let signal = (D.signal objectPath interfaceName memberName) {{
+            D.signalBody = [D.toVariant $ UTF8.decodeString str]
+        }}
+    D.emit dbus signal
+  where
+    objectPath = D.objectPath_ "/org/xmonad/Log"
+    interfaceName = D.interfaceName_ "org.xmonad.Log"
+    memberName = D.memberName_ "Update"
 
 myStartupHook = do
   ewmhDesktopsStartup
+  spawn "$HOME/.dotfiles/scripts/polybar.sh"
   return ()
 
 myEventHook = ewmhDesktopsEventHook <+> fullscreenEventHook <+> docksEventHook
@@ -80,6 +98,9 @@ myKeys conf@(XConfig {{XMonad.modMask = modMask}}) = M.fromList $
   [
     -- launch a terminal
       ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)
+
+    -- toggle struts
+    , ((modMask,               xK_b     ), sendMessage ToggleStruts)
 
     -- launch dmenu
     , ((modMask,               xK_p     ), spawn "rofi -show drun")
@@ -215,20 +236,19 @@ xmobarTitleColor  = "{color10}"
 
 myBar = "xmobar"
 
-myPP = xmobarPP
-         {{
-              ppCurrent = xmobarColor xmobarWSColor xmobarWSHighlight . wrap " " " "
-            , ppTitle   = xmobarColor xmobarTitleColor "" . shorten 100
-            , ppSep     = " <fn=1><fc={color6}>\57521</fc></fn> "
-         }}
-
-toggleStrutsKey XConfig {{XMonad.modMask = modMask}} = (modMask, xK_b)
-
 -- Run XMonad
-main = xmonad =<< statusBar myBar myPP toggleStrutsKey myConfig
+main = do
+  dbus <- D.connectSession
+  D.requestName dbus (D.busName_ "org.xmonad.Log")
+    [D.nameAllowReplacement, D.nameReplaceExisting, D.nameDoNotQueue]
+
+  xmonad
+    $ ewmh
+    $ docks
+    $ myConfig {{ logHook = dynamicLogWithPP (myLogHook dbus) }}
 
 myConfig = defaultConfig
-  {{
+ {{
         terminal           = myTerminal
       , workspaces         = myWorkspaces
       , manageHook         = myManageHook
@@ -238,7 +258,6 @@ myConfig = defaultConfig
       , modMask            = myModMask
       , startupHook        = myStartupHook
       , handleEventHook    = myEventHook
-      , logHook            = myLogHook
       , normalBorderColor  = myNormalBorderColor
       , focusedBorderColor = myFocusedBorderColor
       , borderWidth        = myBorderWidth

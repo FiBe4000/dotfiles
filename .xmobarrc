@@ -4,7 +4,7 @@ Config
   , borderColor      = "#073642"
   , border           = NoBorder
   , bgColor          = "#0f1611"
-  , fgColor          = "#73879D"
+  , fgColor          = "#2b6379"
   , alpha            = 255
   , position         = Static { xpos = 0 , ypos = 0, width = 2464, height = 24 }
   , textOffset       = -1
@@ -19,7 +19,7 @@ Config
   , commands         = 
     [ Run MultiCpu
         [ "-t", "<icon=cpu.xbm/>  <total0>% <total1>% <total2>% <total3>% <total4>% <total5>% <total6>% <total7>%" 
-        , "-L", "5",  "-l","#507578"
+        , "-L", "5",  "-l","#3d5d47"
         , "-H", "50", "-h","#dc322f"
         ] 20
     , Run Memory
@@ -31,7 +31,7 @@ Config
     , Run CoreTemp
         ["-t", "<icon=temp.xbm/>  <core0>°C <core1>°C <core2>°C <core3>°C"
         , "-L", "45", "-l", "#4288b6"
-        , "-n", "#73879D"
+        , "-n", "#2b6379"
         , "-H", "70", "-h", "#dc322f"
         ] 20
     , Run DynNetwork
@@ -45,5 +45,5 @@ Config
     ]
   , sepChar = "%"
   , alignSep = "}{"
-  , template = " <fc=#808972><icon=arch.xbm/></fc> %StdinReader% }{%multicpu% <fn=1><fc=#73879D></fc></fn> %coretemp% <fn=1><fc=#73879D></fc></fn> %memory% <fn=1><fc=#73879D></fc></fn> %dynnetwork% <fn=1><fc=#586e75></fc></fn> %battery% <fn=1><fc=#73879D></fc></fn> %vol% <fn=1><fc=#73879D></fc></fn> <fc=#808972>%date%</fc> <fn=1><fc=#73879D></fc></fn> "-- %mail% "
+  , template = " <fc=#808972><icon=arch.xbm/></fc> %StdinReader% }{%multicpu% <fn=1><fc=#2b6379></fc></fn> %coretemp% <fn=1><fc=#2b6379></fc></fn> %memory% <fn=1><fc=#2b6379></fc></fn> %dynnetwork% <fn=1><fc=#586e75></fc></fn> %battery% <fn=1><fc=#2b6379></fc></fn> %vol% <fn=1><fc=#2b6379></fc></fn> <fc=#808972>%date%</fc> <fn=1><fc=#2b6379></fc></fn> "-- %mail% "
   }

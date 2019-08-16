@@ -1,7 +1,7 @@
 #!/bin/sh
-killall stalonetray
+#killall stalonetray
 killall dropbox
 xmonad --restart
 sleep 2
-stalonetray &
+#stalonetray &
 dropbox &

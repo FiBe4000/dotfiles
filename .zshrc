@@ -100,9 +100,10 @@ plugins=(
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias gotop="gotop -c solarized"
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
+alias google-messages="google-chrome-stable --app=https://messages.google.com/web"
+alias facebook-messenger="google-chrome-stable --app=https://messenger.com"
 
 export KEYTIMEOUT=1
 export VISUAL=vim
@@ -118,6 +119,10 @@ fi
 source $ZSH/oh-my-zsh.sh
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=10'
+ZSH_HIGHLIGHT_STYLES[suffix-alias]=fg=blue,underline
+ZSH_HIGHLIGHT_STYLES[precommand]=fg=blue,underline
+ZSH_HIGHLIGHT_STYLES[arg0]=fg=blue
+
 POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(os_icon context dir vcs)
 POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(vi_mode background_jobs)
 POWERLEVEL9K_VI_MODE_INSERT_BACKGROUND='grey'
