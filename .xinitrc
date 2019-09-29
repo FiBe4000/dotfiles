@@ -52,11 +52,12 @@ compton --config ~/.config/compton.conf -b
 nm-applet &
 blueman-applet &
 xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
-#dropbox &
+dropbox & # TODO Replace with rclone?
 #/home/fibe/.xmonad/scripts/setwallpaper.sh
+sxhkd &
 wpg -m
 udiskie &
 libinput-gestures-setup start
 urxvtd -q -f -o
 autorandr --change &
-exec xmonad
+exec bspwm

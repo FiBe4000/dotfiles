@@ -10,7 +10,7 @@ polybar main &
 
 mode=`autorandr --current`
 
-if [ $mode == docked ]; then
+if [ $mode == docked ] || [ $mode == docked_home ]; then
   polybar second &
   polybar third &
 fi
