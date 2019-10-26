@@ -55,7 +55,8 @@ xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso
 dropbox & # TODO Replace with rclone?
 #/home/fibe/.xmonad/scripts/setwallpaper.sh
 sxhkd &
-wpg -m
+feh --bg-fill $HOME/Pictures/wallpaper/9.jpg
+#wpg -m
 udiskie &
 libinput-gestures-setup start
 urxvtd -q -f -o
