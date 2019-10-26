@@ -6,7 +6,7 @@ Config
   , bgColor          = "{color0}"
   , fgColor          = "{color6}"
   , alpha            = 255
-  , position         = Static {{ xpos = 1360 , ypos = 0, width = 1824, height = 24 }}
+  , position         = Static {{ xpos = 1920 , ypos = 0, width = 2464, height = 24 }}
   , textOffset       = -1
   , iconOffset       = -1
   , lowerOnStart     = True

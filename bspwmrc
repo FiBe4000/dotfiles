@@ -1,0 +1,29 @@
+#! /bin/sh
+
+bspc config border_width         3
+bspc config window_gap          12
+bspc config focus_follows_pointer true
+
+bspc config normal_border_color "#233427"
+bspc config focused_border_color "#54656f"
+
+bspc config split_ratio          0.5
+bspc config single_monocle       true
+bspc config borderless_monocle   true
+bspc config gapless_monocle      true
+
+bspc config remove_disabled_monitors true
+bspc config remove_unplugged_monitors true
+
+~/.dotfiles/scripts/workspaces_multimonitor.sh &
+
+bspc rule -a Google-chrome desktop='Web'
+bspc rule -a Firefox desktop='Web'
+bspc rule -a Evolution desktop='Mail'
+bspc rule -a Pidgin desktop='Chat'
+bspc rule -a Slack desktop='Chat'
+bspc rule -a discord desktop='Chat'
+bspc rule -a Kodi desktop='Etc1'
+bspc rule -a Xmessage state=floating
+
+~/.dotfiles/scripts/polybar.sh

@@ -1,0 +1,27 @@
+{
+    "wallpaper": "/home/fibe/Pictures/wallpaper/new/7.png",
+    "alpha": "90",
+    "special": {
+        "background": "#090b10",
+        "foreground": "#9fc6c8",
+        "cursor": "#9fc6c8"
+    },
+    "colors": {
+        "color0": "#090b10",
+        "color1": "#205962",
+        "color2": "#2E5B64",
+        "color3": "#346A71",
+        "color4": "#4E5B64",
+        "color5": "#3D7B84",
+        "color6": "#469799",
+        "color7": "#9fc6c8",
+        "color8": "#6f8a8c",
+        "color9": "#205962",
+        "color10": "#2E5B64",
+        "color11": "#346A71",
+        "color12": "#4E5B64",
+        "color13": "#3D7B84",
+        "color14": "#469799",
+        "color15": "#9fc6c8"
+    }
+}

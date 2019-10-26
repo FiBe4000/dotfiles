@@ -33,15 +33,17 @@ if [ -d /etc/X11/xinit/xinitrc.d ] ; then
 fi
 
 xsetroot -cursor_name left_ptr
-setxkbmap se
-xmodmap ~/.dotfiles/.escremap
+setxkbmap us
+#xmodmap ~/.dotfiles/.escremap
 compton --config ~/.config/compton.conf -b
-stalonetray &
+#stalonetray &
 nm-applet &
+blueman-applet &
 #xss-lock -- sflock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 dropbox &
 #/home/fibe/.xmonad/scripts/setwallpaper.sh
 wpg -m
 udiskie &
 urxvtd -q -f -o
-exec xmonad
+sxhkd &
+exec bspwm

@@ -11,7 +11,13 @@ URxvt*letterSpace: 	0
 URxvt*depth:            32
 URxvt*iso14755:         false
 
-Xft*antialias:          true
+Xft.dpi: 92
+Xft.autohint: 0
+Xft.lcdfilter: lcddefault
+Xft.hintstyle: hintslight
+Xft.hinting: 1
+Xft.antialias: 1
+Xft.rgba: rgb
 
 Xmessage.form.okay.shapeStyle:         rectangle
 Xmessage.form.okay.background:         S_base03

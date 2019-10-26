@@ -101,7 +101,7 @@ plugins=(
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias gotop="gotop -c solarized"
+#alias gotop="gotop -c solarized"
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
 

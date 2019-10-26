@@ -1,4 +1,4 @@
-rofi.modi:                           window,run,ssh
+rofi.modi:                           window,run,ssh,drun
 rofi.width:                          50
 rofi.fullscreen:                     true
 rofi.monitor:                        -4
@@ -28,3 +28,8 @@ rofi.kb-mode-next:                   Shift+Right,Control+Tab,Alt+l
 rofi.kb-mode-previous:               Shift+Left,Control+Shift+Tab,Alt+h
 rofi.kb-row-up:                      Up,Control+p,Shift+Tab,ISO_Left_Tab,Alt+k
 rofi.kb-row-down:                    Down,Control+n,Alt+j
+rofi.display-drun:                   Apps
+rofi.display-run:                    Run
+rofi.display-window:                 Window
+rofi.display-ssh:                    SSH
+rofi.show-icons:                     true
