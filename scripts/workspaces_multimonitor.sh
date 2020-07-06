@@ -28,9 +28,9 @@
      bspc monitor left -d Music VM Etc1 Etc2 Etc3
      bspc monitor main -d Web Terminals Code Mail Chat
   elif [[ "$M" == 3 ]]; then
-     bspc monitor $(bspc query -M | awk NR==1) -n right
+     bspc monitor $(bspc query -M | awk NR==1) -n left
      bspc monitor $(bspc query -M | awk NR==2) -n main
-     bspc monitor $(bspc query -M | awk NR==3) -n left
+     bspc monitor $(bspc query -M | awk NR==3) -n right
      bspc monitor left -d Chat Music VM Etc1 
      bspc monitor main -d Web Terminals Code Mail
      bspc monitor right -d Etc2 Etc3 Etc4 Etc5

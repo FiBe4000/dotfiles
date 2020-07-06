@@ -9,8 +9,13 @@ while pgrep -x polybar >/dev/null; do sleep 1; done
 polybar main &
 
 mode=`autorandr --current`
+echo $mode
 
-if [ $mode == docked ] || [ $mode == docked_home ]; then
+if [[ $mode == "docked" ]] || [[ $mode == "docked_home" ]] || [[ $mode == "docked_home_freesync" ]]; then
   polybar second &
   polybar third &
+fi
+
+if [[ $mode == "docked_home_laptop_closed" ]]; then
+  polybar second &
 fi

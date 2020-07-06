@@ -1,0 +1,7 @@
+#!/bin/bash
+xrandr --dpi 210
+setxkbmap us
+xmodmap ~/.dotfiles/other/escremap
+$HOME/.dotfiles/scripts/polybar.sh
+feh --bg-fill $HOME/Pictures/wallpaper/11.png
+#wpg -m
