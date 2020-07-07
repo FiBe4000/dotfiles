@@ -5,9 +5,10 @@ user=`logname`
 home="/home/$user"
 
 read -p "WARNING! This will overwrite any existing files in the locations. Continue? (y/N) " cont
+read -p "Do you want to install the FiBe4000 Vim config? (y/N) " wantvim
 
 if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
-  echo "Creating symlinks..."
+  echo "Creating symlinks to config files..."
 
   # Bash
   sudo -u $user ln -sfn $dotfilespath/bash/bash_profile                              $home/.bash_profile
@@ -57,7 +58,19 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   # Zsh
   sudo -u $user ln -sfn $dotfilespath/zsh/zprofile                                   $home/.zprofile
   sudo -u $user ln -sfn $dotfilespath/zsh/zshrc                                      $home/.zshrc
-  echo "done"
+  echo "done."
 else
-  echo "No changes made."
+  echo "No changes made to config files."
+fi
+
+if [ "$wantvim" = "y" ] || [ "$wantvim" = "Y" ]; then
+  echo "Retrieving git submodule for FiBe4000 Vim config..."
+  git submodule init
+  git submodule update
+  echo "done."
+  cd vim
+  $dotfilespath/vim/setup.sh
+  cd ..
+else
+  echo "FiBe4000 Vim config not installed."
 fi

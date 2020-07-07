@@ -1,0 +1,3 @@
+[submodule "vim"]
+	path = vim
+	url = https://github.com/FiBe4000/vim_config.git
