@@ -102,10 +102,6 @@ plugins=(
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
-#alias intrdetnssh="export TERM=rxvt-unicode-256color; ssh -p 2171 fbertil1@213.142.16.115; export TERM=xterm-kitty"
-alias intrdetnssh="export TERM=rxvt-unicode-256color; ssh fbertil1@192.168.1.152; export TERM=xterm-kitty"
-alias serverssh="ssh -p 2170 192.168.1.216"
-alias serversshaway="ssh -p 2170 213.142.16.115"
 
 export KEYTIMEOUT=1
 export VISUAL=vim
