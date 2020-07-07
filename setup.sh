@@ -14,12 +14,14 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/bash/bashrc                                    $home/.bashrc
 
   # Config in home
-  sudo -u $user ln -sfn $dotfilespath/config/autorandr                               $home/.config/autorandr
-  sudo -u $user ln -sfn $dotfilespath/config/bspwm/bspwmrc                           $home/.config/bspwmrc
+  sudo -u $user ln -sfn $dotfilespath/config/autorandr                               $home/.config/
+  sudo -u $user ln -sfn $dotfilespath/config/bspwm/bspwmrc                           $home/.config/bspwm/bspwmrc
   sudo -u $user ln -sfn $dotfilespath/config/chrome/chrome-flags.conf                $home/.config/chrome-flags.conf
   sudo -u $user ln -sfn $dotfilespath/config/compton/compton.conf                    $home/.config/compton.conf
   sudo -u $user ln -sfn $dotfilespath/config/dunst/dunstrc                           $home/.config/dunst/dunstrc
   sudo -u $user ln -sfn $dotfilespath/config/fontconfig/fonts.conf                   $home/.config/fontconfig/fonts.conf
+  sudo -u $user ln -sfn $dotfilespath/config/kitty/kitty.conf                        $home/.config/kitty/kitty.conf
+  sudo -u $user ln -sfn $dotfilespath/config/kitty/nord.conf                         $home/.config/kitty/nord.conf
   sudo -u $user ln -sfn $dotfilespath/config/libinputgestures/libinput-gestures.conf $home/.config/libinput-gestures.conf
   sudo -u $user ln -sfn $dotfilespath/config/polybar/config                          $home/.config/polybar/config
   sudo -u $user ln -sfn $dotfilespath/config/rofi/config                             $home/.config/rofi/config
