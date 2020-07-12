@@ -23,10 +23,10 @@
   if [[ "$M" == 1 ]]; then
     bspc monitor -d Web Terminals Code Mail Chat Music VM Etc1 Etc2 Etc3
   elif [[ "$M" == 2 ]]; then
-     bspc monitor $(bspc query -M | awk NR==1) -n left
-     bspc monitor $(bspc query -M | awk NR==2) -n main
-     bspc monitor left -d Music VM Etc1 Etc2 Etc3
-     bspc monitor main -d Web Terminals Code Mail Chat
+     bspc monitor $(bspc query -M | awk NR==1) -n main
+     bspc monitor $(bspc query -M | awk NR==2) -n right
+     bspc monitor main  -d Web Terminals Code Mail Chat
+     bspc monitor right -d Music VM Etc1 Etc2 Etc3
   elif [[ "$M" == 3 ]]; then
      bspc monitor $(bspc query -M | awk NR==1) -n left
      bspc monitor $(bspc query -M | awk NR==2) -n main

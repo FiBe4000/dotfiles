@@ -19,12 +19,17 @@ bspc config remove_unplugged_monitors true
 ~/.dotfiles/scripts/workspaces_multimonitor.sh &
 
 bspc rule -a Google-chrome desktop='Web'
+bspc rule -a Google-chrome-unstable desktop='Web'
 bspc rule -a Firefox desktop='Web'
 bspc rule -a Evolution desktop='Mail'
 bspc rule -a Pidgin desktop='Chat'
 bspc rule -a Slack desktop='Chat'
 bspc rule -a discord desktop='Chat'
-bspc rule -a Kodi desktop='Etc1'
+bspc rule -a Kodi desktop='Music'
+bspc rule -a Virt-manager desktop='VM'
+bspc rule -a Steam desktop='Etc3'
 bspc rule -a Xmessage state=floating
 
+pkill redshift
+redshift-gtk &
 ~/.dotfiles/scripts/polybar.sh
