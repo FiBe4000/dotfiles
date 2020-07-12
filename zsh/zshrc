@@ -100,8 +100,6 @@ plugins=(
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias grep="grep --color=auto"
-alias dmesg="dmesg --color=always"
 
 export KEYTIMEOUT=1
 export VISUAL=vim
@@ -115,6 +113,24 @@ if [[ ! -d $ZSH_CACHE_DIR ]]; then
 fi
 
 source $ZSH/oh-my-zsh.sh
+
+# Command aliases
+alias grep="grep --color=auto"
+alias dmesg="dmesg --color=always"
+alias ls='lsd'
+
+# Config aliases
+alias bspwmrc="vim ~/.config/bspwm/bspwmrc"
+alias comptonconf="vim ~/.config/compton.conf"
+alias conkyconf="vim ~/.config/conky/conky.conf"
+alias dunstrc="vim ~/.config/dunst/dunstrc"
+alias polybarconf="vim ~/.config/polybar/config"
+alias roficonf="vim ~/.config/rofi/config"
+alias sxhkdrc="vim ~/.config/sxhkd/sxhkdrc"
+alias vimrc="vim ~/.vimrc"
+alias xinitrc="vim ~/.xinitrc"
+alias xresouces="vim ~/.Xresources"
+alias zshrc="vim ~/.zshrc"
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=10'
 ZSH_HIGHLIGHT_STYLES[suffix-alias]=fg=blue,underline
