@@ -19,6 +19,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/bspwm/bspwmrc                           $home/.config/bspwm/bspwmrc
   sudo -u $user ln -sfn $dotfilespath/config/chrome/chrome-flags.conf                $home/.config/chrome-flags.conf
   sudo -u $user ln -sfn $dotfilespath/config/compton/compton.conf                    $home/.config/compton.conf
+  sudo -u $user ln -sfn $dotfilespath/config/conky/conky.conf                        $home/.config/conky/conky.conf
   sudo -u $user ln -sfn $dotfilespath/config/dunst/dunstrc                           $home/.config/dunst/dunstrc
   sudo -u $user ln -sfn $dotfilespath/config/fontconfig/fonts.conf                   $home/.config/fontconfig/fonts.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/kitty.conf                        $home/.config/kitty/kitty.conf
@@ -35,11 +36,12 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   ln -sfn $dotfilespath/etc/tlp.conf                                                 /etc/tlp.conf
   ln -sfn $dotfilespath/udevrules/backlight.rules                                    /etc/udev/rules.d/backlight.rules
   ln -sfn $dotfilespath/udevrules/kbd_backlight.rules                                /etc/udev/rules.d/kbd_backlight.rules
-  ln -sfn $dotfilespath/xorg.conf.d/20-modesetting.conf                              /etc/X11/xorg.conf.d/20-modesetting.conf
-  ln -sfn $dotfilespath/xorg.conf.d/30-touchpad.conf                                 /etc/X11/xorg.conf.d/30-touchpad.conf
-  ln -sfn $dotfilespath/xorg.conf.d/90-dvi1.conf                                     /etc/X11/xorg.conf.d/90-dvi1.conf
-  ln -sfn $dotfilespath/xorg.conf.d/90-dvi2.conf                                     /etc/X11/xorg.conf.d/90-dvi2.conf
-  ln -sfn $dotfilespath/xorg.conf.d/90-thinkpadmonitor.conf                          /etc/X11/xorg.conf.d/90-thinkpadmonitor.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/20-modesetting.conf                          /etc/X11/xorg.conf.d/20-modesetting.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/30-touchpad.conf                             /etc/X11/xorg.conf.d/30-touchpad.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi1.conf                                 /etc/X11/xorg.conf.d/90-dvi1.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi2.conf                                 /etc/X11/xorg.conf.d/90-dvi2.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/90-thinkpadmonitor.conf                      /etc/X11/xorg.conf.d/90-thinkpadmonitor.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/99-libinput-texyodaii.conf                   /etc/X11/xorg.conf.d/99-libinput-texyodaii.conf
 
   # Local in home
   sudo -u $user ln -sfn $dotfilespath/local/applications/delugeserver.desktop        $home/.local/share/applications/delugeserver.desktop
