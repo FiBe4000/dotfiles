@@ -43,6 +43,6 @@ bspc rule -a Virt-manager desktop='VM'
 bspc rule -a Steam desktop='Etc3'
 bspc rule -a Xmessage state=floating
 
-#pkill redshift
-#redshift-gtk &
+pkill redshift
+redshift-gtk &
 ~/.dotfiles/scripts/polybar.sh
