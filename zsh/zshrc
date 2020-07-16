@@ -1,3 +1,16 @@
+################################                        
+################################
+##                            ##
+##  ███████╗███████╗██╗  ██╗  ##
+##  ╚══███╔╝██╔════╝██║  ██║  ##
+##    ███╔╝ ███████╗███████║  ##
+##   ███╔╝  ╚════██║██╔══██║  ##
+##  ███████╗███████║██║  ██║  ##
+##  ╚══════╝╚══════╝╚═╝  ╚═╝  ##
+##                            ##
+################################                        
+################################                        
+
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
@@ -37,7 +50,7 @@ DISABLE_AUTO_UPDATE="true"
 # DISABLE_AUTO_TITLE="true"
 
 # Uncomment the following line to enable command auto-correction.
-# ENABLE_CORRECTION="true"
+ENABLE_CORRECTION="true"
 
 # Uncomment the following line to display red dots whilst waiting for completion.
 # COMPLETION_WAITING_DOTS="true"
@@ -130,6 +143,7 @@ alias sxhkdrc="vim ~/.config/sxhkd/sxhkdrc"
 alias vimrc="vim ~/.vimrc"
 alias xinitrc="vim ~/.xinitrc"
 alias xresouces="vim ~/.Xresources"
+alias zathurarc="vim ~/.config/zathura/zathurarc"
 alias zshrc="vim ~/.zshrc"
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=10'
