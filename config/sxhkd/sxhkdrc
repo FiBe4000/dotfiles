@@ -5,7 +5,6 @@
 # terminal emulator
 super + shift + Return
         kitty --single-instance
-#	urxvtc
 
 # program launcher
 super + p
@@ -86,14 +85,13 @@ super + {o,i}
 	bspc wm -h on
 
 # focus or send to the given desktop
-#super + {_,shift + }{1-9,0}
-#	bspc {desktop -f,node -d} '^{1-9,10}'
-
 super + {1-9,0}
         ~/.dotfiles/scripts/summondesktop.sh {1-9,10}
+
 super + shift + {1-9,0}
         ~/.dotfiles/scripts/senddesktop.sh {1-9,10}
 
+# focus monitor
 super + {w,e,r}
         bspc monitor --focus {left,main,right}
 
@@ -183,5 +181,10 @@ ctrl + shift + super + l
 ctrl + alt + l
         sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1"
 
+# Turn on focus mode, including polybar
 super + shift + f
-        spacefm
+        ~/.dotfiles/scripts/togglefocusmode.sh false
+
+# Turn on focus mode, excluding polybar
+super + ctrl + shift + f
+        ~/.dotfiles/scripts/togglefocusmode.sh true

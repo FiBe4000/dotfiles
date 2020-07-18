@@ -43,6 +43,11 @@ bspc rule -a Virt-manager desktop='VM'
 bspc rule -a Steam desktop='Etc3'
 bspc rule -a Xmessage state=floating
 
-pkill redshift
+# Initialize focus mode to false
+echo "false" > /tmp/bspwmfocusmode.dat
+
+# Start/restart redshift and polybar
+killall -q redshift
+while pgrep -x redshift >/dev/null; do sleep 1; done
 redshift-gtk &
 ~/.dotfiles/scripts/polybar.sh
