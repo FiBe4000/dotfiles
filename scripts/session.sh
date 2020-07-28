@@ -16,7 +16,7 @@ if [ "$1" = "home" ]; then
   # Launch Chrome if not already running
   if ! pgrep -x "chrome" > /dev/null; then
     echo "launching chrome"
-    nohup google-chrome-unstable & > /dev/null &
+    nohup google-chrome-unstable --disable-font-subpixel-positioning & > /dev/null &
   fi
 elif [ "$1" = "work" ]; then
   # Launch Teams if not already running
@@ -28,7 +28,7 @@ elif [ "$1" = "work" ]; then
   # Launch Chrome if not already running
   if ! pgrep -x "chrome" > /dev/null; then
     echo "launching chrome"
-    nohup google-chrome-unstable & > /dev/null &
+    nohup google-chrome-unstable --disable-font-subpixel-positioning & > /dev/null &
   fi
 fi
 
