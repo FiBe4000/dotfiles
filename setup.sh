@@ -41,12 +41,14 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi1.conf                                 /etc/X11/xorg.conf.d/90-dvi1.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi2.conf                                 /etc/X11/xorg.conf.d/90-dvi2.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-thinkpadmonitor.conf                      /etc/X11/xorg.conf.d/90-thinkpadmonitor.conf
-  ln -sfn $dotfilespath/etc/xorg.conf.d/99-libinput-texyodaii.conf                   /etc/X11/xorg.conf.d/99-libinput-texyodaii.conf
+  #ln -sfn $dotfilespath/etc/xorg.conf.d/99-libinput-texyodaii.conf                   /etc/X11/xorg.conf.d/99-libinput-texyodaii.conf
 
   # Local in home
   sudo -u $user ln -sfn $dotfilespath/local/applications/delugeserver.desktop        $home/.local/share/applications/delugeserver.desktop
   sudo -u $user ln -sfn $dotfilespath/local/applications/facebook-messenger.desktop  $home/.local/share/applications/facebook-messenger.desktop
   sudo -u $user ln -sfn $dotfilespath/local/applications/google-messages.desktop     $home/.local/share/applications/google-messages.desktop
+  sudo -u $user ln -sfn $dotfilespath/local/applications/home-session.desktop        $home/.local/share/applications/home-session.desktop
+  sudo -u $user ln -sfn $dotfilespath/local/applications/work-session.desktop        $home/.local/share/applications/work-session.desktop
 
   # /usr/
   ln -sfn $dotfilespath/usr/libinput/local-overrides.quirks                          /usr/share/libinput/local-overrides.quirks

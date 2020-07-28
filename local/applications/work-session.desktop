@@ -1,0 +1,6 @@
+[Desktop Entry]
+Version=1.0
+Name=Work Session
+Type=Application
+Exec=bash -c '/home/filip/.dotfiles/scripts/session.sh work;$SHELL'
+Icon=/home/filip/Downloads/icons/work.png

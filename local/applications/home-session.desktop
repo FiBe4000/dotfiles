@@ -1,0 +1,6 @@
+[Desktop Entry]
+Version=1.0
+Name=Home Session
+Type=Application
+Exec=bash -c '/home/filip/.dotfiles/scripts/session.sh home;$SHELL'
+Icon=/home/filip/Downloads/icons/home.png
