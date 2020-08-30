@@ -38,10 +38,10 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   ln -sfn $dotfilespath/udevrules/kbd_backlight.rules                                /etc/udev/rules.d/kbd_backlight.rules
   ln -sfn $dotfilespath/etc/xorg.conf.d/20-modesetting.conf                          /etc/X11/xorg.conf.d/20-modesetting.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/30-touchpad.conf                             /etc/X11/xorg.conf.d/30-touchpad.conf
+  ln -sfn $dotfilespath/etc/xorg.conf.d/30-trackpoint.conf                           /etc/X11/xorg.conf.d/30-trackpoint.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi1.conf                                 /etc/X11/xorg.conf.d/90-dvi1.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-dvi2.conf                                 /etc/X11/xorg.conf.d/90-dvi2.conf
   ln -sfn $dotfilespath/etc/xorg.conf.d/90-thinkpadmonitor.conf                      /etc/X11/xorg.conf.d/90-thinkpadmonitor.conf
-  #ln -sfn $dotfilespath/etc/xorg.conf.d/99-libinput-texyodaii.conf                   /etc/X11/xorg.conf.d/99-libinput-texyodaii.conf
 
   # Local in home
   sudo -u $user ln -sfn $dotfilespath/local/applications/delugeserver.desktop        $home/.local/share/applications/delugeserver.desktop
@@ -51,7 +51,6 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/local/applications/work-session.desktop        $home/.local/share/applications/work-session.desktop
 
   # /usr/
-  ln -sfn $dotfilespath/usr/libinput/local-overrides.quirks                          /usr/share/libinput/local-overrides.quirks
   ln -sfn $dotfilespath/scripts/keyboard-backlight.sh                                /usr/lib/systemd/system-sleep/keyboard-backlight.sh
 
   # Xorg in home
