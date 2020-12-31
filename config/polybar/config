@@ -43,7 +43,7 @@ background = ${colors.darkestnight}
 foreground = ${colors.lightsnow}
 
 [bar/main]
-monitor          = DP-1-1
+monitor          = DP-1-2
 monitor-fallback = eDP-1
 width            = 100%
 height           = 28
@@ -87,7 +87,7 @@ tray-detached   = false
 wm-restack = bspwm
 
 [bar/second]
-monitor          = DP-1-2
+monitor          = DP-1-1
 monitor-fallback = DP-1-3
 width            = 100%
 height           = 28

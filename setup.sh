@@ -25,6 +25,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/kitty/kitty.conf                        $home/.config/kitty/kitty.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/nord.conf                         $home/.config/kitty/nord.conf
   sudo -u $user ln -sfn $dotfilespath/config/libinputgestures/libinput-gestures.conf $home/.config/libinput-gestures.conf
+  sudo -u $user ln -sfn $dotfilespath/config/nvim/init.vim                           $home/.config/nvim/init.vim
   sudo -u $user ln -sfn $dotfilespath/config/polybar/config                          $home/.config/polybar/config
   sudo -u $user ln -sfn $dotfilespath/config/rofi/config                             $home/.config/rofi/config
   sudo -u $user ln -sfn $dotfilespath/config/sxhkd/sxhkdrc                           $home/.config/sxhkd/sxhkdrc
