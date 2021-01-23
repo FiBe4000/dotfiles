@@ -1,0 +1,197 @@
+[module/rightsep]
+type               = custom/text
+content            =  
+content-font       = 2
+content-padding    = 1
+content-background = ${colors.background}
+content-foreground = ${colors.foreground}
+
+[module/leftsep]
+type               = custom/text
+content            =  
+content-font       = 2
+content-padding    = 1
+content-background = ${colors.background}
+content-foreground = ${colors.foreground}
+
+[module/tempicon]
+type               = custom/text
+content            = 
+content-padding    = 2
+content-background = ${colors.background}
+content-foreground = ${colors.foreground}
+
+[module/arch]
+type               = custom/text
+content            =  
+content-font       = 4
+content-padding    = 1
+content-background = ${colors.background}
+content-foreground = ${colors.frost3}
+
+[module/xwindow]
+type              = internal/xwindow
+format-background = ${colors.background}
+format-foreground = ${colors.frost1}
+format-padding    = 1
+label             = %title:0:100: ...%
+
+[module/ewmh]
+type                    = internal/xworkspaces
+pin-workspaces          = true
+format                  = <label-state>
+format-background       = ${colors.background}
+label-active            = %icon%
+label-active-font       = 4
+label-active-padding    = 2
+label-active-foreground = ${colors.frost3}
+label-active-background = ${colors.lightnight}
+
+label-occupied         = %icon%
+label-occupied-font    = 4
+label-occupied-padding = 2
+
+label-urgent         = %icon%
+label-urgent-font    = 4
+label-urgent-padding = 2
+
+label-empty         = %icon%
+label-empty-font    = 4
+label-empty-padding = 2
+
+icon-0  = Web;
+icon-1  = Terminals;
+icon-2  = Code;
+icon-3  = Mail; 
+icon-4  = Chat;
+icon-5  = Music;
+icon-6  = VM;
+icon-7  = Etc1;
+icon-8  = Etc2;
+icon-9  = Etc3;
+icon-10 = Etc4;
+icon-11 = Etc5;
+
+[module/cpu]
+type     = internal/cpu
+interval = 1
+format   = <label>
+label    = %{T3} %{T1}%percentage-cores%
+
+[module/system-cpu-temppercore]
+type     = custom/script
+exec     = /usr/share/polybar/scripts/system-cpu-temppercore.sh
+interval = 3
+
+[module/system-cpu-frequency]
+type     = custom/script
+exec     = /usr/share/polybar/scripts/system-cpu-frequency.sh
+interval = 2
+
+[module/memory]
+type     = internal/memory
+interval = 3;
+format   = <label>
+label    = %{T3} %{T1}%percentage_used%%
+
+[module/wlan]
+type      = internal/network
+interface = wlp2s0
+interval  = 3.0
+
+format-connected-padding    = 1
+format-connected            = <ramp-signal>  <label-connected>
+label-connected             =  %downspeed%  %upspeed%
+format-connected-background = ${colors.background}
+
+format-disconnected =
+
+ramp-signal-font       = 3
+ramp-signal-0          =  
+ramp-signal-foreground = ${colors.foreground}
+
+[module/eth]
+type      = internal/network
+interface = enp0s31f6
+interval  = 3.0
+
+format-connected            = %{T3} %{T1}<label-connected>
+format-connected-padding    = 1
+format-connected-background = ${colors.background}
+label-connected             =  %downspeed%  %upspeed%
+
+[module/eth-dock]
+type      = internal/network
+interface = enp12s0u1
+interval  = 3.0
+
+format-connected            = %{T3} %{T1}<label-connected>
+format-connected-padding    = 1
+format-connected-background = ${colors.background}
+label-connected             =  %downspeed%  %upspeed%
+
+[module/date]
+type     = internal/date
+interval = 1
+
+date = "%a %d %b, "
+time = %H:%M:%S
+
+format-padding    = 1
+format-background = ${colors.background}
+format-foreground = ${colors.frost3}
+
+label = %date%%time%
+
+[module/volume]
+type = internal/pulseaudio
+
+format-volume            = <ramp-volume> <label-volume>
+format-volume-padding    = 1
+format-volume-background = ${colors.background}
+
+ramp-volume-font       = 4
+ramp-volume-0          = 
+ramp-volume-1          = 
+ramp-volume-2          = 
+ramp-volume-3          = 
+ramp-volume-foreground = ${colors.foreground}
+
+format-muted-prefix     = "%{T4}%{T1} "
+format-muted-foreground = ${colors.background}
+format-muted-background = ${colors.red}
+format-muted-padding    = 1
+label-muted             = MUTED
+
+[module/battery]
+type    = internal/battery
+battery = BAT0
+adapter = ADP1
+full-at = 100
+
+format-charging            =   <animation-charging> <label-charging>
+format-charging-padding    = 1
+format-discharging-padding = 1
+format-discharging         = <ramp-capacity> <label-discharging>
+format-full                = <label-full> <ramp-capacity>
+format-full-padding        = 1
+format-full-background     = ${colors.background}
+
+ramp-capacity-font       = 4
+ramp-capacity-0          = 
+ramp-capacity-1          =  
+ramp-capacity-2          =  
+ramp-capacity-3          = 
+ramp-capacity-4          =  
+ramp-capacity-foreground = ${colors.foreground}
+
+animation-charging-foreground = ${colors.green}
+animation-charging-framerate  = 500
+animation-charging-0          = 
+animation-charging-1          =  
+animation-charging-2          =  
+animation-charging-3          = 
+animation-charging-4          =  
+format-charging-background    = ${colors.background}
+format-discharging-background = ${colors.background}
+

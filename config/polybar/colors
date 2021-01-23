@@ -1,0 +1,31 @@
+# Nord colors
+[colors]
+
+# Polar Night
+darkestnight = #2e3440
+darknight    = #3b4252
+mediumnight  = #434c5e
+lightnight   = #4c566a
+
+# Snowstorm
+darksnow   = #d8dee9
+mediumsnow = #e5e9f0
+lightsnow  = #eceff4
+
+# Frost
+frost1     = #8fbcbb
+frost2     = #88c0d0
+frost3     = #81a1c1
+frost4     = #5e81ac
+
+# Aurora
+red        = #bf616a
+orange     = #d08770
+yellow     = #ebcb8b
+green      = #a3be8c
+purple     = #b48ead
+
+# Functional
+background = ${colors.darkestnight}
+foreground = ${colors.lightsnow}
+
