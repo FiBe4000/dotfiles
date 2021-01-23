@@ -43,7 +43,7 @@ background = ${colors.darkestnight}
 foreground = ${colors.lightsnow}
 
 [bar/main]
-monitor          = DP-1-2
+monitor          = DP-2
 monitor-fallback = eDP-1
 width            = 100%
 height           = 28
@@ -76,7 +76,7 @@ font-2 = DejaVuSansMono Nerd Font Mono:pixelsize=7;3
 font-3 = DejaVuSansMono Nerd Font Mono:pixelsize=9;4
 
 modules-left  = arch ewmh leftsep xwindow
-modules-right = cpu rightsep tempicon system-cpu-temppercore rightsep memory rightsep eth-dock eth wlan rightsep volume rightsep battery rightsep date rightsep
+modules-right = cpu rightsep tempicon system-cpu-temppercore rightsep memory rightsep eth rightsep volume rightsep date rightsep
 
 tray-position   = right
 tray-padding    = 5
@@ -87,7 +87,7 @@ tray-detached   = false
 wm-restack = bspwm
 
 [bar/second]
-monitor          = DP-1-1
+monitor          = DP-0
 monitor-fallback = DP-1-3
 width            = 100%
 height           = 28
@@ -389,7 +389,7 @@ ramp-signal-foreground = ${colors.foreground}
 
 [module/eth]
 type      = internal/network
-interface = enp0s31f6
+interface = eno1
 interval  = 3.0
 
 format-connected            = %{T3} %{T1}<label-connected>
