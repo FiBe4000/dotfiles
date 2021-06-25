@@ -10,6 +10,9 @@ sysmodmap=/etc/X11/xinit/.Xmodmap
 export GDK_SCALE=1
 export GDK_DPI_SCALE=1
 
+export QT_QPA_PLATFORMTHEME=gtk2
+export DESKTOP_SESSION=gnome
+
 # merge in defaults and keymaps
 
 if [ -f $sysresources ]; then
@@ -37,26 +40,20 @@ if [ -d /etc/X11/xinit/xinitrc.d ] ; then
  unset f
 fi
 
-if [ $2 == 'steam' ] ; then
-    xsetroot -cursor_name left_ptr
-    sxhkd &
-    exec bspwm -c /home/fibe/.config/bspwm/bspwmrc_steam
-else
-
-    # For gnome-keyring (used by Evolution)
-    #eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
-    #export SSH_AUTH_SOCK
-
-    setxkbmap us
-    feh --bg-fill $HOME/Pictures/wallpaper/11.png
-    picom --config ~/.config/picom/picom.conf -b
-    xsetroot -cursor_name left_ptr
-    xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
-    nm-applet &
-    blueman-applet &
-    dunst &
-    sxhkd &
-    udiskie &
-    sleep 1
-    exec bspwm
-fi
+setxkbmap us
+feh --bg-fill $HOME/Pictures/wallpaper/11.png
+picom --config ~/.config/picom/picom.conf -b
+xsetroot -cursor_name left_ptr
+xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
+nm-applet &
+headset-charge-indicator --headsetcontrol-binary /usr/bin/headsetcontrol &
+blueman-applet &
+dunst &
+sxhkd &
+udiskie &
+aw-server &
+aw-watcher-afk &
+aw-watcher-window &
+spotify-listener &
+sleep 1
+exec bspwm

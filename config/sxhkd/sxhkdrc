@@ -148,13 +148,13 @@ shift + XF86MonBrightnessUp
         xbacklight -inc 5 -time 200 -steps 10
 
 XF86AudioLowerVolume
-        /usr/bin/pulseaudio-ctl down
+				pactl set-sink-volume @DEFAULT_SINK@ -5%
         
 XF86AudioRaiseVolume
-        /usr/bin/pulseaudio-ctl up
+        pactl set-sink-volume @DEFAULT_SINK@ +5%
 
 XF86AudioMute
-        /usr/bin/pulseaudio-ctl mute
+        pactl set-sink-mute @DEFAULT_SINK@ toggle
 
 XF86Display
         autorandr --change
@@ -179,7 +179,8 @@ ctrl + shift + super + l
         ~/.dotfiles/scripts/togglekblayout.sh
 
 ctrl + alt + l
-        sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1"
+				sleep 1; xset dpms force suspend
+# sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1"
 
 # Turn on focus mode, including polybar
 super + shift + f
@@ -188,3 +189,15 @@ super + shift + f
 # Turn on focus mode, excluding polybar
 super + ctrl + shift + f
         ~/.dotfiles/scripts/togglefocusmode.sh true
+
+# Toggle game mode
+super + ctrl + shift + g
+				~/.dotfiles/scripts/togglegamemode.sh DP-2 DP-0
+
+# Toggle do not disturb
+super + n
+				~/.dotfiles/scripts/togglednd.sh
+
+# Fetch last notification from history
+super + shift + n
+				dunstctl history-pop

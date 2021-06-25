@@ -3,4 +3,4 @@ Version=1.0
 Name=Facebook Messenger
 Type=Application
 Exec=bash -c 'google-chrome-stable --disable-font-subpixel-positioning --app=https://messenger.com;$SHELL'
-Icon=/home/filip/Downloads/icons/facebook-messenger.png
+Icon=/home/fibe/Downloads/icons/facebook-messenger.png

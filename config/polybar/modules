@@ -1,0 +1,464 @@
+[module/leftsep_darkestnight]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.darkestnight}
+
+[module/leftsep_darkestnight2]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.darknight}
+content-foreground = ${colors.darkestnight}
+
+[module/leftsep_darknight]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.mediumnight}
+content-foreground = ${colors.darknight}
+
+[module/leftsep_mediumnight]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.lightnight}
+content-foreground = ${colors.mediumnight}
+
+[module/leftsep_lightnight]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparentdarkestnight}
+content-foreground = ${colors.lightnight}
+
+[module/leftsep_frost4]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.purple}
+content-foreground = ${colors.frost4}
+
+[module/leftsep_orange]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.orange}
+
+[module/leftsep_green]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.orange}
+content-foreground = ${colors.green}
+
+[module/leftsep_yellow]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.yellow}
+
+[module/leftsep_yellow2]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.frost4}
+content-foreground = ${colors.yellow}
+
+[module/leftsep_purple]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.green}
+content-foreground = ${colors.purple}
+
+[module/rightsep_darkestnight]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.darkestnight}
+
+[module/rightsep_darkestnight2]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.darknight}
+content-foreground = ${colors.darkestnight}
+
+[module/rightsep_yellow]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.yellow}
+
+[module/rightsep_frost3]
+type               = custom/text
+content            =  
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.darkestnight}
+content-foreground = ${colors.frost3}
+
+[module/rightsep_frost4]
+type               = custom/text
+content            =  
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.frost4}
+
+[module/rightsep_darknight]
+type               = custom/text
+content            =  
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparentdarkestnight}
+content-foreground = ${colors.darknight}
+
+[module/tempicon]
+type               = custom/text
+content            = 
+content-padding    = 1
+content-background = ${colors.mediumnight}
+content-foreground = ${colors.foreground}
+
+[module/arch]
+type               = custom/text
+content            =  
+content-font       = 4
+content-padding    = 1
+content-background = ${colors.background}
+content-foreground = ${colors.frost3}
+
+[module/empty]
+type               = custom/text
+content            = %{} %{}
+content-background = ${colors.darkestnight}
+content-foreground = ${colors.foreground}
+
+[module/dnd]
+type               = custom/text
+content            =  
+content-font       = 4
+content-padding    = 1
+content-background = ${colors.red}
+content-foreground = ${colors.foreground}
+
+[module/xwindow]
+type              = internal/xwindow
+format-background = ${colors.darknight}
+format-foreground = ${colors.foreground}
+format-padding    = 1
+label             = %{} %title:0:100: ...%
+
+[module/powermenu]
+type = custom/menu
+expand-right = true
+
+label-open = %{T2}
+label-close = %{}  %{}
+label-separator = 
+format-padding = 1
+format-spacing = 1
+format-background = ${colors.frost4}
+format-foreground = ${colors.foreground}
+
+menu-0-0 = %{T3}
+menu-0-0-exec = systemctl poweroff
+menu-0-1 = %{T3}
+menu-0-1-exec = systemctl reboot
+
+[module/ewmh]
+type                    = internal/xworkspaces
+pin-workspaces          = true
+format                  = <label-state>
+format-foreground       = ${colors.mediumnight}
+format-background       = ${colors.darkestnight}
+label-active            = %icon%
+label-active-font       = 4
+label-active-padding    = 2
+label-active-foreground = ${colors.foreground}
+label-active-background = ${colors.darknight}
+
+label-occupied            = %icon%
+label-occupied-font       = 4
+label-occupied-padding    = 2
+label-occupied-foreground = ${colors.mediumnight}
+label-occupied-background = ${colors.darkestnight}
+
+label-urgent         = %icon%
+label-urgent-font    = 4
+label-urgent-padding = 2
+
+label-empty            = %icon%
+label-empty-font       = 4
+label-empty-padding    = 2
+label-empty-foreground = ${colors.mediumnight}
+label-empty-background = ${colors.darkestnight}
+
+icon-0  = Web;
+icon-1  = Terminals;
+icon-2  = Code;
+icon-3  = Mail; 
+icon-4  = Chat;
+icon-5  = Music;
+icon-6  = VM;
+icon-7  = Etc1;
+icon-8  = Etc2;
+icon-9  = Etc3;
+icon-10 = Etc4;
+icon-11 = Etc5;
+
+[module/bspwm]
+type                    = internal/bspwm
+pin-workspaces          = true
+enable-click            = true
+format                  = <label-state>
+format-foreground       = ${colors.mediumnight}
+format-background       = ${colors.darkestnight}
+label-active            = %icon%
+label-active-font       = 4
+label-active-padding    = 2
+label-active-foreground = ${colors.foreground}
+label-active-background = ${colors.darknight}
+
+label-occupied            = %icon%
+label-occupied-font       = 4
+label-occupied-padding    = 2
+label-occupied-foreground = ${colors.mediumnight}
+label-occupied-background = ${colors.darkestnight}
+
+label-urgent         = %icon%
+label-urgent-font    = 4
+label-urgent-padding = 2
+
+label-empty            = %icon%
+label-empty-font       = 4
+label-empty-padding    = 2
+label-empty-foreground = ${colors.mediumnight}
+label-empty-background = ${colors.darkestnight}
+
+ws-icon-0  = Web;
+ws-icon-1  = Terminals;
+ws-icon-2  = Code;
+ws-icon-3  = Mail; 
+ws-icon-4  = Chat;
+ws-icon-5  = Music;
+ws-icon-6  = VM;
+ws-icon-7  = Etc1;
+ws-icon-8  = Etc2;
+ws-icon-9  = Etc3;
+ws-icon-10 = Etc4;
+ws-icon-11 = Etc5;
+
+[module/cpu]
+type              = internal/cpu
+interval          = 1
+label             = %{T3} %{T1}%percentage%%
+format            = <label>
+format-foreground = ${colors.foreground}
+format-background = ${colors.orange}
+format-padding    = 1
+
+[module/cpu_allcores]
+type              = internal/cpu
+interval          = 1
+format            = <label>
+format-padding    = 1
+format-background = ${colors.lightnight}
+label             = %{T3} %{T1}%percentage-cores%
+
+[module/cpu_temp]
+type             = internal/temperature
+interval         = 3
+thermal-zone     = 1
+units            = true
+warn-temperature = 80
+
+format            = <label>
+format-foreground = ${colors.foreground}
+format-background = ${colors.green}
+format-padding    = 1
+
+format-warn            = <label-warn>
+format-warn-background = ${colors.green}
+format-warn-padding    = 1
+
+label                 =  %temperature-c%
+label-warn            =  %temperature-c%
+label-warn-foreground = ${colors.red}
+
+[module/system-cpu-temppercore]
+type              = custom/script
+exec              = /usr/share/polybar/scripts/system-cpu-temppercore.sh
+interval          = 3
+format-padding    = 1
+format-background = ${colors.mediumnight}
+
+[module/system-cpu-frequency]
+type     = custom/script
+exec     = /usr/share/polybar/scripts/system-cpu-frequency.sh
+interval = 2
+
+[module/memory]
+type              = internal/memory
+interval          = 3;
+label             = %{T3} %{T1}%percentage_used%%
+format            = <label>
+format-background = ${colors.purple}
+format-foreground = ${colors.foreground}
+format-padding    = 1
+
+[module/memory2]
+type              = internal/memory
+interval          = 3;
+label             = %{T3} %{T1}%percentage_used%%
+format            = <label>
+format-background = ${colors.darknight}
+format-foreground = ${colors.foreground}
+format-padding    = 1
+
+[module/eth]
+type      = internal/network
+interface = eno1
+interval  = 3.0
+
+format-connected            = %{T3} %{T1}<label-connected>
+format-connected-padding    = 1
+format-connected-background = ${colors.darknight}
+format-connected-foreground = ${colors.foreground}
+label-connected             =  %downspeed%  %upspeed%
+
+[module/date]
+type     = internal/date
+interval = 1
+
+date = "%a %d %b "
+time = %H:%M:%S
+
+format-padding    = 1
+format-background = ${colors.lightnight}
+format-foreground = ${colors.foreground}
+
+label =   %date% %time%
+
+[module/date2]
+type     = internal/date
+interval = 1
+
+date = "%a %d %b "
+time = %H:%M:%S
+
+format-padding    = 1
+format-background = ${colors.darkestnight}
+format-foreground = ${colors.foreground}
+
+label =   %date% %time% %{}
+
+[module/volume]
+type = internal/pulseaudio
+
+format-volume            = <ramp-volume> <label-volume> %{} %{}
+format-volume-padding    = 1
+format-volume-foreground = ${colors.foreground}
+format-volume-background = ${colors.frost4}
+
+ramp-volume-font       = 4
+ramp-volume-0          = 
+ramp-volume-1          = 
+ramp-volume-2          = 
+ramp-volume-3          = 
+ramp-volume-foreground = ${colors.foreground}
+
+format-muted-prefix     = "%{T4}%{T1} "
+format-muted-foreground = ${colors.background}
+format-muted-background = ${colors.frost4}
+format-muted-padding    = 1
+label-muted             = MUTED
+
+[module/volume2]
+type = internal/pulseaudio
+
+format-volume            = <ramp-volume> <label-volume>
+format-volume-padding    = 1
+format-volume-foreground = ${colors.foreground}
+format-volume-background = ${colors.darkestnight}
+
+ramp-volume-font       = 4
+ramp-volume-0          = 
+ramp-volume-1          = 
+ramp-volume-2          = 
+ramp-volume-3          = 
+ramp-volume-foreground = ${colors.foreground}
+
+format-muted-prefix     = "%{T4}%{T1} "
+format-muted-foreground = ${colors.red}
+format-muted-background = ${colors.darkestnight}
+format-muted-padding    = 1
+label-muted             = MUTED
+
+[module/previous]
+type = custom/ipc
+format-font = 1
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+; Default
+hook-0 = echo ""
+; When spotify active
+hook-1 = echo "  "
+click-left = "spotifyctl -q previous"
+
+[module/next]
+type = custom/ipc
+format-font = 1
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+; Default
+hook-0 = echo ""
+; When spotify active
+hook-1 = echo "  "
+click-left = "spotifyctl -q next"
+
+[module/playpause]
+type = custom/ipc
+format-font = 1
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+; Default
+hook-0 = echo ""
+; Playing
+hook-1 = echo "  "
+; Paused
+hook-2 = echo "  "
+click-left = "spotifyctl -q playpause"
+
+[module/spotify]
+type = custom/ipc
+format-font = 1
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+format-padding = 2
+hook-0 = echo "                                  "
+hook-1 = ~/.dotfiles/scripts/spotifypolybar.sh 
+click-right = polybar-msg -p %pid% hook spotify 1
+double-click-right = polybar-msg -p %pid% hook spotify 2
+

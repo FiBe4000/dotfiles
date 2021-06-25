@@ -10,7 +10,12 @@ killall -q polybar
 while pgrep -x polybar >/dev/null; do sleep 1; done
 
 if [ "$focus_mode" = false ]; then
-  polybar main &
+  polybar power &
+  polybar workspaces &
+  polybar spotify &
+  polybar date &
+  polybar sensors &
+  polybar tray &
   polybar second &
 else
   polybar focused_main &
