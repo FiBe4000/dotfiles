@@ -8,7 +8,9 @@ sysmodmap=/etc/X11/xinit/.Xmodmap
 # Fix scaling
 
 export GDK_SCALE=1
-export GDK_DPI_SCALE=0.5
+export GDK_DPI_SCALE=1
+export QT_QPA_PLATFORMTHEME=gtk2
+export DESKTOP_SESSION=gnome
 
 # merge in defaults and keymaps
 
@@ -42,6 +44,7 @@ eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
 export SSH_AUTH_SOCK
 
 setxkbmap us
+/usr/lib/geoclue-2.0/demos/agent &
 xmodmap ~/.dotfiles/other/escremap
 autorandr --skip-options gamma --change
 feh --bg-fill $HOME/Pictures/wallpaper/11.png

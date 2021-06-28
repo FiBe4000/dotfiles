@@ -120,6 +120,7 @@ export EDITOR="$VISUAL"
 export LESSOPEN="| /usr/bin/source-highlight-esc.sh %s"
 export LESS="-R "
 export BAT_THEME="Nord"
+export DIFFPROG='nvim -d'
 
 ZSH_CACHE_DIR=$HOME/.cache/oh-my-zsh
 if [[ ! -d $ZSH_CACHE_DIR ]]; then
@@ -133,7 +134,10 @@ source /usr/share/fzf/completion.zsh
 # Command aliases
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
-alias ls='lsd'
+alias ls='exa --git --icons'
+alias la='exa -lahg --git --icons'
+alias ll='exa -lhg --git --icons'
+alias lt='exa -T --icons'
 
 # Config aliases
 alias vim="nvim"
@@ -150,6 +154,12 @@ alias xinitrc="vim ~/.xinitrc"
 alias xresouces="vim ~/.Xresources"
 alias zathurarc="vim ~/.config/zathura/zathurarc"
 alias zshrc="vim ~/.zshrc"
+
+# Functions
+gvim() {
+  neovide --multiGrid --disowned "$1" &
+  disown
+}
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=10'
 ZSH_HIGHLIGHT_STYLES[suffix-alias]=fg=blue,underline
