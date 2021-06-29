@@ -26,7 +26,7 @@ Plugin 'thaerkh/vim-indentguides'
 Plugin 'majutsushi/tagbar'
 Plugin 'ludovicchabant/vim-gutentags'
 Plugin 'roxma/nvim-yarp'
-Plugin 'roxma/vim-hug-neovim-rpc'
+"Plugin 'roxma/vim-hug-neovim-rpc'
 Plugin 'Shougo/deoplete.nvim'
 Plugin 'Shougo/neoinclude.vim'
 Plugin 'zchee/deoplete-clang'
@@ -36,6 +36,7 @@ Plugin 'numirias/semshi'
 Plugin 'junegunn/fzf.vim'
 "Plugin 'vim-scripts/DoxygenToolkit.vim'
 Plugin 'ryanoasis/vim-devicons'
+Plugin 'ActivityWatch/aw-watcher-vim'
 
 call vundle#end()
 filetype plugin indent on
@@ -144,6 +145,10 @@ let g:gutentags_ctags_exclude = [
 let g:airline_powerline_fonts=1
 let g:airline_theme='nord'
 let g:airline#extensions#tabline#enabled = 1
+let g:airline_left_sep = ''
+let g:airline_right_sep = ''
+let g:airline_left_alt_sep = ''
+let g:airline_right_alt_sep = ''
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 
@@ -329,6 +334,11 @@ set cursorline
 
 " Highlight columns after column 80
 let &colorcolumn=join(range(81,999),",")
+
+set guifont=DejaVuSansMono\ Nerd\ Font:h15
+
+
+let g:neovide_refresh_rate=240
 
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

@@ -5,7 +5,6 @@ user=`logname`
 home="/home/$user"
 
 read -p "WARNING! This will overwrite any existing files in the locations. Continue? (y/N) " cont
-read -p "Do you want to install the FiBe4000 Vim config? (y/N) " wantvim
 
 if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   echo "Creating symlinks to config files..."
@@ -18,19 +17,19 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/autorandr                               $home/.config/
   sudo -u $user ln -sfn $dotfilespath/config/bspwm/bspwmrc                           $home/.config/bspwm/bspwmrc
   sudo -u $user ln -sfn $dotfilespath/config/chrome/chrome-flags.conf                $home/.config/chrome-flags.conf
-  sudo -u $user ln -sfn $dotfilespath/config/compton/compton.conf                    $home/.config/compton.conf
-  sudo -u $user ln -sfn $dotfilespath/config/conky/conky.conf                        $home/.config/conky/conky.conf
+#  sudo -u $user ln -sfn $dotfilespath/config/conky/conky.conf                        $home/.config/conky/conky.conf
   sudo -u $user ln -sfn $dotfilespath/config/dunst/dunstrc                           $home/.config/dunst/dunstrc
   sudo -u $user ln -sfn $dotfilespath/config/fontconfig/fonts.conf                   $home/.config/fontconfig/fonts.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/kitty.conf                        $home/.config/kitty/kitty.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/nord.conf                         $home/.config/kitty/nord.conf
   sudo -u $user ln -sfn $dotfilespath/config/libinputgestures/libinput-gestures.conf $home/.config/libinput-gestures.conf
   sudo -u $user ln -sfn $dotfilespath/config/nvim/init.vim                           $home/.config/nvim/init.vim
+  sudo -u $user ln -sfn $dotfilespath/config/picom/picom.conf                        $home/.config/picom/picom.conf
   sudo -u $user ln -sfn $dotfilespath/config/polybar/colors                          $home/.config/polybar/colors
   sudo -u $user ln -sfn $dotfilespath/config/polybar/config                          $home/.config/polybar/config
   sudo -u $user ln -sfn $dotfilespath/config/polybar/fonts                           $home/.config/polybar/fonts
   sudo -u $user ln -sfn $dotfilespath/config/polybar/modules                         $home/.config/polybar/modules
-  sudo -u $user ln -sfn $dotfilespath/config/rofi/config                             $home/.config/rofi/config
+  sudo -u $user ln -sfn $dotfilespath/config/rofi/config.rasi                        $home/.config/rofi/config.rasi
   sudo -u $user ln -sfn $dotfilespath/config/sxhkd/sxhkdrc                           $home/.config/sxhkd/sxhkdrc
   sudo -u $user ln -sfn $dotfilespath/config/zathura/zathurarc                       $home/.config/zathura/zathurarc
 
@@ -51,8 +50,8 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/local/applications/delugeserver.desktop        $home/.local/share/applications/delugeserver.desktop
   sudo -u $user ln -sfn $dotfilespath/local/applications/facebook-messenger.desktop  $home/.local/share/applications/facebook-messenger.desktop
   sudo -u $user ln -sfn $dotfilespath/local/applications/google-messages.desktop     $home/.local/share/applications/google-messages.desktop
-  sudo -u $user ln -sfn $dotfilespath/local/applications/home-session.desktop        $home/.local/share/applications/home-session.desktop
-  sudo -u $user ln -sfn $dotfilespath/local/applications/work-session.desktop        $home/.local/share/applications/work-session.desktop
+#  sudo -u $user ln -sfn $dotfilespath/local/applications/home-session.desktop        $home/.local/share/applications/home-session.desktop
+#  sudo -u $user ln -sfn $dotfilespath/local/applications/work-session.desktop        $home/.local/share/applications/work-session.desktop
 
   # /usr/
   ln -sfn $dotfilespath/scripts/keyboard-backlight.sh                                /usr/lib/systemd/system-sleep/keyboard-backlight.sh
@@ -68,16 +67,4 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   echo "done."
 else
   echo "No changes made to config files."
-fi
-
-if [ "$wantvim" = "y" ] || [ "$wantvim" = "Y" ]; then
-  echo "Retrieving git submodule for FiBe4000 Vim config..."
-  git submodule init
-  git submodule update
-  echo "done."
-  cd vim
-  $dotfilespath/vim/setup.sh
-  cd ..
-else
-  echo "FiBe4000 Vim config not installed."
 fi

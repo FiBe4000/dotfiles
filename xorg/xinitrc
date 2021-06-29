@@ -9,6 +9,7 @@ sysmodmap=/etc/X11/xinit/.Xmodmap
 
 export GDK_SCALE=1
 export GDK_DPI_SCALE=1
+
 export QT_QPA_PLATFORMTHEME=gtk2
 export DESKTOP_SESSION=gnome
 
@@ -49,16 +50,20 @@ xmodmap ~/.dotfiles/other/escremap
 autorandr --skip-options gamma --change
 feh --bg-fill $HOME/Pictures/wallpaper/11.png
 xcalib -o eDP-1 ~/.dotfiles/other/B140QAN02_0.icm
-compton --config ~/.config/compton.conf -b
+picom --config ~/.config/picom/picom.conf -b
 xsetroot -cursor_name left_ptr
 xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
 xbacklight -ctrl tpacpi::kbd_backlight -set 100
 nm-applet &
+headset-charge-indicator --headsetcontrol-binary /usr/bin/headsetcontrol &
 blueman-applet &
-dropbox & # TODO Replace with rclone?
 dunst &
 sxhkd &
 udiskie &
 libinput-gestures-setup start
+aw-server &
+aw-watcher-afk &
+aw-watcher-window &
+spotify-listener &
 sleep 1
 exec bspwm

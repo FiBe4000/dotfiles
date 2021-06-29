@@ -10,28 +10,15 @@ killall -q polybar
 while pgrep -x polybar >/dev/null; do sleep 1; done
 
 if [ "$focus_mode" = false ]; then
-  polybar main &
+  polybar power &
+  polybar workspaces &
+  polybar spotify &
+  polybar date &
+  polybar sensors &
+  polybar tray &
+  polybar second &
 else
   polybar focused_main &
+  polybar focused_second &
 fi
 
-mode=`autorandr --current`
-echo $mode
-
-if [[ $mode == "docked" ]] || [[ $mode == "docked_home" ]] || [[ $mode == "docked_home_freesync" ]]; then
-  if [ "$focus_mode" = false ]; then
-    polybar second &
-    polybar third &
-  else
-    polybar focused_second &
-    polybar focused_third &
-  fi
-fi
-
-if [[ $mode == "docked_home_laptop_closed" ]]; then
-  if [ "$focus_mode" = false ]; then
-    polybar second &
-  else
-    polybar focused_second &
-  fi
-fi

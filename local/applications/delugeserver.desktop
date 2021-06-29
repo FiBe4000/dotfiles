@@ -3,4 +3,4 @@ Version=1.0
 Name=Deluge Server WebUi
 Type=Application
 Exec=bash -c 'google-chrome-stable --disable-font-subpixel-positioning --app=https://192.168.1.216:8112;$SHELL'
-Icon=/home/filip/Downloads/icons/deluge.png
+Icon=/home/fibe/Downloads/icons/deluge.png

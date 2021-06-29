@@ -120,7 +120,7 @@ export EDITOR="$VISUAL"
 export LESSOPEN="| /usr/bin/source-highlight-esc.sh %s"
 export LESS="-R "
 export BAT_THEME="Nord"
-export DIFFPROG='nvim -d'
+export DIFFPROG="nvim -d"
 
 ZSH_CACHE_DIR=$HOME/.cache/oh-my-zsh
 if [[ ! -d $ZSH_CACHE_DIR ]]; then
@@ -139,6 +139,8 @@ alias ls='exa --git --icons'
 alias la='exa -lahg --git --icons'
 alias ll='exa -lhg --git --icons'
 alias lt='exa -T --icons'
+alias ytop='ytop -p -s'
+alias icat='kitty +kitten icat'
 
 # Config aliases
 alias vim="nvim"
@@ -176,6 +178,10 @@ POWERLEVEL9K_OS_ICON_BACKGROUND='grey'
 POWERLEVEL9K_PROMPT_ON_NEWLINE=true
 POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX=""
 POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="↳ "
+POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR=""
+POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR=""
+POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR=""
+POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR=""
 
 bindkey '^ ' autosuggest-accept
 bindkey '^R' history-incremental-search-backward

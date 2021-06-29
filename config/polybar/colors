@@ -26,6 +26,7 @@ green      = #a3be8c
 purple     = #b48ead
 
 # Functional
-background = ${colors.darkestnight}
-foreground = ${colors.lightsnow}
-
+background  = ${colors.darkestnight}
+foreground  = ${colors.lightsnow}
+transparent = #00000000
+transparentdarkestnight = #aa2e3440

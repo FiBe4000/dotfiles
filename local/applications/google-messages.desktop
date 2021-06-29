@@ -3,4 +3,4 @@ Version=1.0
 Name=Google Messages
 Type=Application
 Exec=bash -c 'google-chrome-stable --disable-font-subpixel-positioning --app=https://messages.google.com/web;$SHELL'
-Icon=/home/filip/Downloads/icons/google-messages.png
+Icon=/home/fibe/Downloads/icons/google-messages.png
