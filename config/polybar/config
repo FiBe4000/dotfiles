@@ -57,7 +57,7 @@ wm-name    = polybar-main
 wm-restack = bspwm
 
 [bar/power]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 3.5%
 height           = 28
@@ -92,7 +92,42 @@ wm-name    = polybar-power
 wm-restack = bspwm
 
 [bar/workspaces]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 17.9%
+height           = 28
+offset-x         = 4.5%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left   = ewmh
+
+wm-name    = polybar-workspaces
+wm-restack = bspwm
+
+[bar/workspaces2]
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 9%
 height           = 28
@@ -127,7 +162,43 @@ wm-name    = polybar-workspaces
 wm-restack = bspwm
 
 [bar/spotify]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 30.5%
+height           = 28
+offset-x         = 23%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+enable-ipc       = true
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left = previous playpause next spotify
+
+wm-name    = polybar-spotify
+wm-restack = bspwm
+
+[bar/spotify2]
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 30.5%
 height           = 28
@@ -163,7 +234,7 @@ wm-name    = polybar-spotify
 wm-restack = bspwm
 
 [bar/date]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 10%
 height           = 28
@@ -198,7 +269,7 @@ wm-name    = polybar-date
 wm-restack = bspwm
 
 [bar/dnd]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 2%
 height           = 28
@@ -232,8 +303,43 @@ modules-center  = dnd
 wm-name    = polybar-dnd
 wm-restack = bspwm
 
+[bar/dnd2]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 2%
+height           = 28
+offset-x         = 72%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.red}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-center  = dnd
+
+wm-name    = polybar-dnd
+wm-restack = bspwm
+
 [bar/sensors]
-monitor          = DP-2
+monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 12.5%
 height           = 28
@@ -267,8 +373,43 @@ modules-right  = cpu leftsep_green cpu_temp leftsep_purple memory leftsep_frost4
 wm-name    = polybar-sensors
 wm-restack = bspwm
 
+[bar/sensorsbat]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 15.5%
+height           = 28
+offset-x         = 74.5%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.orange}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-right  = cpu leftsep_green cpu_temp2 leftsep_purple memory leftsep_frost4 volume3 leftsep_frost1 battery
+
+wm-name    = polybar-sensors
+wm-restack = bspwm
+
 [bar/tray]
-monitor          = DP-2
+monitor          = ${env:MONITOR:}
 monitor-fallback = eDP-1
 width            = 9%
 height           = 28
@@ -310,7 +451,7 @@ wm-name    = polybar-tray
 wm-restack = bspwm
 
 [bar/second]
-monitor          = DP-0
+monitor          = ${env:MONITOR:}
 monitor-fallback = DP-1-3
 width            = 99%
 height           = 28
@@ -346,36 +487,39 @@ wm-name    = polybar-second
 wm-restack = bspwm
 
 [bar/third]
-monitor      = eDP-1
-width        = 100%
-height       = 28
-offset-y     = 0%
-radius       = 0.0
-fixed-center = false
+monitor          = ${env:MONITOR:}
+monitor-fallback = DP-1-3
+width            = 99%
+height           = 28
+offset-x         = 0.5%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
 
-dpi-x = 210
-dpi-y = 210
+dpi-x = 96
+dpi-y = 96
 
-background = ${colors.background}
+background = ${colors.transparentdarkestnight}
 foreground = ${colors.foreground}
 
 line-size        = 0
 label-line-color = #f00
 
-border-size  = 3
-border-color = #ff4C566A
+border-size  = 0
+border-color = ${colors.lightnight}
 
 padding-left  = 0
-padding-right = 1
+padding-right = 0
 
 module-margin-left  = 0
 module-margin-right = 0
 
 include-file = ~/.config/polybar/fonts
 
-modules-left  = arch ewmh leftsep xwindow
-modules-right = date
+modules-left   = ewmh rightsep_darkestnight2 xwindow rightsep_darknight
+modules-right  = leftsep_lightnight cpu_allcores leftsep_mediumnight tempicon system-cpu-temppercore leftsep_darknight memory2 eth leftsep_darkestnight2 volume2 date2
 
+wm-name    = polybar-second
 wm-restack = bspwm
 
 [bar/focused_main]

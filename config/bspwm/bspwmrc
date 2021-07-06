@@ -53,6 +53,14 @@ echo "false" > /tmp/bspwmfocusmode.dat
 echo "false" > /tmp/game_mode.dat
 echo "false" > /tmp/dnd.dat
 
+# Determine if running on laptop by looking for battery
+battery_path=/sys/class/power_supply/BAT0/capacity
+if test -f "$battery_path"; then
+  echo "true" > /tmp/laptop.dat
+else
+  echo "false" > /tmp/laptop.dat
+fi
+
 # Start/restart redshift and polybar
 killall -q redshift
 while pgrep -x redshift >/dev/null; do sleep 1; done

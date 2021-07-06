@@ -38,6 +38,14 @@ content-padding    = 0
 content-background = ${colors.transparentdarkestnight}
 content-foreground = ${colors.lightnight}
 
+[module/leftsep_frost1]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.frost4}
+content-foreground = ${colors.frost1}
+
 [module/leftsep_frost4]
 type               = custom/text
 content            = 
@@ -307,6 +315,26 @@ label                 =  %temperature-c%
 label-warn            =  %temperature-c%
 label-warn-foreground = ${colors.red}
 
+[module/cpu_temp2]
+type             = internal/temperature
+interval         = 3
+thermal-zone     = 5
+units            = true
+warn-temperature = 80
+
+format            = <label>
+format-foreground = ${colors.foreground}
+format-background = ${colors.green}
+format-padding    = 1
+
+format-warn            = <label-warn>
+format-warn-background = ${colors.green}
+format-warn-padding    = 1
+
+label                 =  %temperature-c%
+label-warn            =  %temperature-c%
+label-warn-foreground = ${colors.red}
+
 [module/system-cpu-temppercore]
 type              = custom/script
 exec              = /usr/share/polybar/scripts/system-cpu-temppercore.sh
@@ -415,6 +443,59 @@ format-muted-foreground = ${colors.red}
 format-muted-background = ${colors.darkestnight}
 format-muted-padding    = 1
 label-muted             = MUTED
+
+[module/volume3]
+type = internal/pulseaudio
+
+format-volume            = <ramp-volume> <label-volume> 
+format-volume-padding    = 1
+format-volume-foreground = ${colors.foreground}
+format-volume-background = ${colors.frost4}
+
+ramp-volume-font       = 4
+ramp-volume-0          = 
+ramp-volume-1          = 
+ramp-volume-2          = 
+ramp-volume-3          = 
+ramp-volume-foreground = ${colors.foreground}
+
+format-muted-prefix     = "%{T4}%{T1} "
+format-muted-foreground = ${colors.background}
+format-muted-background = ${colors.frost4}
+format-muted-padding    = 1
+label-muted             = MUTED
+
+[module/battery]
+type    = internal/battery
+battery = BAT0
+adapter = ADP1
+full-at = 100
+
+format-charging            =   <animation-charging> <label-charging> %{} %{}
+format-charging-padding    = 2
+format-discharging-padding = 1
+format-discharging         = <ramp-capacity> <label-discharging> %{} %{}
+format-full                = <label-full> <ramp-capacity> %{} %{}
+format-full-padding        = 1
+format-full-background     = ${colors.frost1}
+
+ramp-capacity-font       = 4
+ramp-capacity-0          = 
+ramp-capacity-1          =  
+ramp-capacity-2          =  
+ramp-capacity-3          = 
+ramp-capacity-4          =  
+ramp-capacity-foreground = ${colors.foreground}
+
+animation-charging-foreground = ${colors.green}
+animation-charging-framerate  = 500
+animation-charging-0          = 
+animation-charging-1          =  
+animation-charging-2          =  
+animation-charging-3          = 
+animation-charging-4          =  
+format-charging-background    = ${colors.frost1}
+format-discharging-background = ${colors.frost1}
 
 [module/previous]
 type = custom/ipc
