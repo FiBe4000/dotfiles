@@ -40,6 +40,16 @@ if [ -d /etc/X11/xinit/xinitrc.d ] ; then
  unset f
 fi
 
+# Determine if running on laptop by looking for battery
+battery_path=/sys/class/power_supply/BAT0/capacity
+if test -f "$battery_path"; then
+  echo "true" > /tmp/laptop.dat
+else
+  echo "false" > /tmp/laptop.dat
+fi
+
+setxkbmap us
+
 laptop=`cat /tmp/laptop.dat`
 if [ "$laptop" = true ]; then
     # For gnome-keyring (used by Evolution)
@@ -53,7 +63,6 @@ if [ "$laptop" = true ]; then
     libinput-gestures-setup start
 fi
 
-setxkbmap us
 /usr/lib/geoclue-2.0/demos/agent &
 feh --bg-fill $HOME/Pictures/wallpaper/11.png
 picom --config ~/.config/picom/picom.conf -b
