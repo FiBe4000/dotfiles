@@ -40,20 +40,25 @@ if [ -d /etc/X11/xinit/xinitrc.d ] ; then
  unset f
 fi
 
-# For gnome-keyring (used by Evolution)
-eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
-export SSH_AUTH_SOCK
+laptop=`cat /tmp/laptop.dat`
+if [ "$laptop" = true ]; then
+    # For gnome-keyring (used by Evolution)
+    eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
+    export SSH_AUTH_SOCK
+
+    xmodmap ~/.dotfiles/other/escremap
+    autorandr --skip-options gamma --change
+    xcalib -o eDP-1 ~/.dotfiles/other/B140QAN02_0.icm
+    xbacklight -ctrl tpacpi::kbd_backlight -set 100
+    libinput-gestures-setup start
+fi
 
 setxkbmap us
 /usr/lib/geoclue-2.0/demos/agent &
-xmodmap ~/.dotfiles/other/escremap
-autorandr --skip-options gamma --change
 feh --bg-fill $HOME/Pictures/wallpaper/11.png
-xcalib -o eDP-1 ~/.dotfiles/other/B140QAN02_0.icm
 picom --config ~/.config/picom/picom.conf -b
 xsetroot -cursor_name left_ptr
 xss-lock -- sxlock -f "-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1" &
-xbacklight -ctrl tpacpi::kbd_backlight -set 100
 nm-applet &
 headset-charge-indicator --headsetcontrol-binary /usr/bin/headsetcontrol &
 blueman-applet &
@@ -61,7 +66,6 @@ blueman-applet &
 dunst &
 sxhkd &
 udiskie &
-libinput-gestures-setup start
 aw-server &
 aw-watcher-afk &
 aw-watcher-window &
