@@ -57,6 +57,7 @@ xbacklight -ctrl tpacpi::kbd_backlight -set 100
 nm-applet &
 headset-charge-indicator --headsetcontrol-binary /usr/bin/headsetcontrol &
 blueman-applet &
+/usr/lib/nordtray/nordtray &
 dunst &
 sxhkd &
 udiskie &
