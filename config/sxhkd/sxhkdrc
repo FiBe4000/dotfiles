@@ -192,7 +192,7 @@ super + ctrl + shift + f
 
 # Toggle game mode
 super + ctrl + shift + g
-				~/.dotfiles/scripts/togglegamemode.sh DP-2 DP-0
+				~/.dotfiles/scripts/togglegamemode.sh DP-0 DP-2
 
 # Toggle do not disturb
 super + n

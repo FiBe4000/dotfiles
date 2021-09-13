@@ -58,3 +58,4 @@ killall -q redshift
 while pgrep -x redshift >/dev/null; do sleep 1; done
 redshift-gtk &
 ~/.dotfiles/scripts/polybar.sh
+pactl set-default-sink alsa_output.usb-Logitech_G935_Gaming_Headset-00.analog-stereo

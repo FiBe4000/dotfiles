@@ -36,7 +36,6 @@ Plugin 'numirias/semshi'
 Plugin 'junegunn/fzf.vim'
 "Plugin 'vim-scripts/DoxygenToolkit.vim'
 Plugin 'ryanoasis/vim-devicons'
-Plugin 'ActivityWatch/aw-watcher-vim'
 
 call vundle#end()
 filetype plugin indent on
