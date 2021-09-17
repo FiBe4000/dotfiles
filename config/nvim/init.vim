@@ -279,6 +279,7 @@ filetype plugin on
 filetype indent on
 syntax enable
 set grepprg=grep\ -nH\ $*
+au BufNewFile,BufRead /*.rasi setf css
 
 " Tab settings
 set softtabstop=2

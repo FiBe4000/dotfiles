@@ -1,12 +1,7 @@
 configuration {
 	modi: "window,run,ssh,drun";
-	width: 50;
-	lines: 10;
-	columns: 1;
 	font: "DejaVuSans Mono 20";
-	bw: 0;
 	location: 0;
-	padding: 350;
 	yoffset: 0;
 	xoffset: 0;
 	fixed-num-lines: true;
@@ -15,16 +10,8 @@ configuration {
 	ssh-client: "ssh";
 	ssh-command: "{terminal} -e {ssh-client} {host}";
 	run-command: "{cmd}";
-	eh: 1;
 	parse-hosts: true;
 	matching: "normal";
-	separator-style: "none";
-	fullscreen: true;
-	scrollbar-width: 0;
-	color-normal: "#002e3440, #d8dee9, #002e3440, #005e81ac, #5e81ac";
-	color-urgent: "#2e3440, #d6b48d, #22231D, #d6b48d, #d8dee9";
-	color-active: "#2e3440, #a3be8c, #2e3440, #a3be8c, #2e3440";
-	color-window: "#662e3440, #5e81ac, #724a3d";
 	display-window: "Window";
 	display-run: "Run";
 	display-ssh: "SSH";
@@ -33,4 +20,88 @@ configuration {
 	kb-mode-previous: "Shift+Left,Control+Shift+Tab,Alt+h";
 	kb-row-up: "Up,Control+p,Shift+Tab,ISO_Left_Tab,Alt+k";
 	kb-row-down: "Down,Control+n,Alt+j";
+}
+
+window {
+	children: [mainbox];
+	width: 100%;
+	height: 100%;
+	fullscreen: true;
+	orientation: vertical;
+	border: 0px 0px 0px 0px;
+	bw: 0;
+	padding: 350;
+	separator-style: "none";
+	scrollbar-width: 0;
+	//color-normal: "#002e3440, #d8dee9, #002e3440, #005e81ac, #5e81ac";
+	//color-urgent: "#2e3440, #d6b48d, #22231D, #d6b48d, #d8dee9";
+	//color-active: "#2e3440, #a3be8c, #2e3440, #a3be8c, #2e3440";
+	background-color: #2e344066;
+	//, #5e81ac, #724a3d;
+}
+
+mainbox {
+	width: 500;
+	height: 500;
+	orientation: vertical;
+	border: 0px 0px 0px 0px;
+}
+
+inputbar {
+	orientation: horizontal;
+	text-color: #d8dee9;
+}
+
+prompt {
+	text-color: #d8dee9;
+}
+
+entry {
+	text-color: #d8dee9;
+}
+
+listview {
+	border: 0px 0px 0px 0px;
+	lines: 10;
+	columns: 1;
+	scrollbar: false;
+}
+
+element {
+	children: [element-icon, element-text];
+	orientation: horizontal;
+}
+
+element normal.normal {
+	background-color: inherit;
+	text-color: #d8dee9;
+}
+
+element normal.active {
+	background-color: inherit;
+	text-color: #d8dee9;
+}
+
+element alternate.normal {
+	background-color: inherit;
+	text-color: #d8dee9;
+}
+
+element alternate.active {
+	background-color: inherit;
+	text-color: #d8dee9;
+}
+
+element selected.normal {
+	background-color: inherit;
+	text-color: #5e81ac;
+}
+
+element selected.active {
+	background-color: inherit;
+	text-color: #5e81ac;
+}
+
+element-text selected {
+	highlight: underline #5e81ac;
 }
