@@ -45,41 +45,45 @@ killall -q polybar
 # wait until the processes have been shut down
 while pgrep -x polybar >/dev/null; do sleep 1; done
 
-if [ "$focus_mode" = false ]; then
-  # Launch main bars
-  echo " Launching main bars"
-  MONITOR=$primary_monitor polybar power &
-
-  if [ ${#secondary_monitors[@]} -gt 1 ]; then
-    MONITOR=$primary_monitor polybar workspaces2 &
-    MONITOR=$primary_monitor polybar spotify2 &
-  else
-    MONITOR=$primary_monitor polybar workspaces &
-    MONITOR=$primary_monitor polybar spotify &
-  fi
-
-  MONITOR=$primary_monitor polybar date &
-  MONITOR=$primary_monitor polybar tray &
-
-  if [ "$laptop" = true ]; then
-    MONITOR=$primary_monitor polybar sensorsbat &
-  else
-    MONITOR=$primary_monitor polybar sensors &
-  fi
-
-  # If second monitor is connected, launch second bar
-  if [ ${secondary_monitors[0]} ]; then
-    echo " Launching second bar"
-    MONITOR=${secondary_monitors[0]} polybar second &
-
-    # If third monitor is connected, launch third bar
-    if [ ${secondary_monitors[1]} ]; then
-      echo " Launching third bar"
-      MONITOR=${secondary_monitors[1]} polybar second &
-    fi
-  fi
+if [ "$game_mode" = true ]; then
+  echo "GAME MODE"
+    MONITOR=$primary_monitor polybar game &
 else
-  polybar focused_main &
-  polybar focused_second &
-fi
+  if [ "$focus_mode" = false ]; then
+    # Launch main bars
+    echo " Launching main bars"
+    MONITOR=$primary_monitor polybar power &
 
+    if [ ${#secondary_monitors[@]} -gt 1 ]; then
+      MONITOR=$primary_monitor polybar workspaces2 &
+      MONITOR=$primary_monitor polybar spotify2 &
+    else
+      MONITOR=$primary_monitor polybar workspaces &
+      MONITOR=$primary_monitor polybar spotify &
+    fi
+
+    MONITOR=$primary_monitor polybar date &
+    MONITOR=$primary_monitor polybar tray &
+
+    if [ "$laptop" = true ]; then
+      MONITOR=$primary_monitor polybar sensorsbat &
+    else
+      MONITOR=$primary_monitor polybar sensors &
+    fi
+
+    # If second monitor is connected, launch second bar
+    if [ ${secondary_monitors[0]} ]; then
+      echo " Launching second bar"
+      MONITOR=${secondary_monitors[0]} polybar second &
+
+      # If third monitor is connected, launch third bar
+      if [ ${secondary_monitors[1]} ]; then
+        echo " Launching third bar"
+        MONITOR=${secondary_monitors[1]} polybar second &
+      fi
+    fi
+  else
+    polybar focused_main &
+    polybar focused_second &
+  fi
+fi
