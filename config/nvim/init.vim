@@ -335,11 +335,9 @@ set cursorline
 " Highlight columns after column 80
 let &colorcolumn=join(range(81,999),",")
 
-set guifont=DejaVuSansMono\ Nerd\ Font:h15
-
-
+" Neovide settings
+set guifont=DejaVuSansMono\ Nerd\ Font:h11
 let g:neovide_refresh_rate=240
-
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 """""""""""""""""""""""""""""""""" Functions """""""""""""""""""""""""""""""""""

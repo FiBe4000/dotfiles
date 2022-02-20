@@ -47,7 +47,6 @@
     # Set the maximum width for the progress bar
     progress_bar_max_width = 300
 
-
     # Show how many messages are currently hidden (because of geometry).
     indicate_hidden = yes
 
@@ -68,7 +67,7 @@
     # Draw a line of "separator_height" pixel height between two
     # notifications.
     # Set to 0 to disable.
-    separator_height = 0
+    separator_height = 3
 
     # Padding between text and separator.
     padding = 20
@@ -92,7 +91,7 @@
     #  * foreground: use the same color as the foreground;
     #  * frame: use the same color as the frame;
     #  * anything else will be interpreted as a X color.
-    separator_color = frame
+    separator_color = "#00000000"
 
     # Sort messages by urgency.
     sort = yes
@@ -212,7 +211,7 @@
     dmenu = /usr/bin/dmenu -p dunst:
 
     # Browser for opening urls in context menu.
-    browser = /usr/bin/firefox -new-tab
+    browser = /usr/bin/google-chrome-stable
 
     # Always run rule-defined scripts, even if the notification is suppressed
     always_run_script = true

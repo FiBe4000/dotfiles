@@ -159,12 +159,21 @@ XF86AudioMute
 XF86Display
         autorandr --change
 
+Print
+				flameshot launcher
+
+ctrl + Print
+				flameshot full
+
+ctrl + shift + Print
+				flameshot gui
+
 #
 # misc
 #
 
 super + ctrl + shift + w
-        wpg -m
+        sudo ~/.dotfiles/scripts/windowsboot.sh
 
 ctrl + shift + super + q
         systemctl poweroff

@@ -31,7 +31,7 @@ bspc config gapless_monocle      false
 bspc config remove_disabled_monitors  true
 bspc config remove_unplugged_monitors true
 
-bspc config ignore_ewmh_focus false
+bspc config ignore_ewmh_focus true
 
 ~/.dotfiles/scripts/workspaces_multimonitor.sh &
 
@@ -44,7 +44,7 @@ bspc rule -a Slack desktop='Chat'
 bspc rule -a discord desktop='Chat'
 bspc rule -a Kodi desktop='Music'
 bspc rule -a Virt-manager desktop='VM'
-bspc rule -a Steam desktop='Etc3' state=floating follow=no
+bspc rule -a Steam desktop='Etc3' follow=no
 bspc rule -a Xmessage state=floating
 bspc rule -a Blueman-manager state=floating
 

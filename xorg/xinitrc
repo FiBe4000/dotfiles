@@ -12,6 +12,7 @@ export GDK_DPI_SCALE=1
 
 export QT_QPA_PLATFORMTHEME=gtk2
 export DESKTOP_SESSION=gnome
+export GTK_THEME=Nordic-bluish-accent
 
 # merge in defaults and keymaps
 
@@ -75,9 +76,10 @@ blueman-applet &
 dunst &
 sxhkd &
 udiskie &
-aw-server &
-aw-watcher-afk &
-aw-watcher-window &
 spotify-listener &
+pactl load-module module-switch-on-connect
+polkit-dumb-agent &
+imwheel -b 45 &
+flameshot &
 sleep 1
 exec bspwm

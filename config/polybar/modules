@@ -178,6 +178,13 @@ format-foreground = ${colors.foreground}
 format-padding    = 1
 label             = %{} %title:0:100: ...%
 
+[module/xwindow2]
+type              = internal/xwindow
+format-background = ${colors.transparent}
+format-foreground = ${colors.darkestnight}
+format-padding    = 1
+label             = %{} %title:0:100: ...%
+
 [module/powermenu]
 type = custom/menu
 expand-right = true
@@ -216,6 +223,8 @@ label-occupied-background = ${colors.darkestnight}
 label-urgent         = %icon%
 label-urgent-font    = 4
 label-urgent-padding = 2
+label-urgent-foreground = ${colors.red}
+label-urgent-background = ${colors.darkestnight}
 
 label-empty            = %icon%
 label-empty-font       = 4
