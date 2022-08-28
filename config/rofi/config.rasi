@@ -18,7 +18,7 @@ configuration {
 	display-drun: "Apps";
 	kb-mode-next: "Shift+Right,Control+Tab,Alt+l";
 	kb-mode-previous: "Shift+Left,Control+Shift+Tab,Alt+h";
-	kb-row-up: "Up,Control+p,Shift+Tab,ISO_Left_Tab,Alt+k";
+	kb-row-up: "Up,Control+p,Shift+Tab,Alt+k";
 	kb-row-down: "Down,Control+n,Alt+j";
 }
 

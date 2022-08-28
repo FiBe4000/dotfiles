@@ -67,7 +67,7 @@ Xft.hinting:            1
 Xft.antialias:          true
 Xft.rgba:               rgb
 
-Xcursor.theme:          Bibata-Original-Classic
+Xcursor.theme:          Nord-cursors
 Xcursor.size:           16
 
 Xmessage.form.okay.shapeStyle:         rectangle
