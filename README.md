@@ -33,3 +33,6 @@ v2.0.3
 
 v2.1.0
 * Added a dedicated Polybar for when game mode is activated that looks good without a compositor.
+
+v2.1.1
+* Added urgent color to workspaces in Polybar, new mouse cursor, general bug fixes.
