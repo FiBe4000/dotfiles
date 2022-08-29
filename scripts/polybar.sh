@@ -54,7 +54,10 @@ else
     echo " Launching main bars"
     MONITOR=$primary_monitor polybar power &
 
-    if [ ${#secondary_monitors[@]} -gt 1 ]; then
+    if [ ${#secondary_monitors[@]} -gt 2 ]; then
+      MONITOR=$primary_monitor polybar workspaces3 &
+      MONITOR=$primary_monitor polybar spotify3 &
+    elif [ ${#secondary_monitors[@]} -gt 1 ]; then
       MONITOR=$primary_monitor polybar workspaces2 &
       MONITOR=$primary_monitor polybar spotify2 &
     else

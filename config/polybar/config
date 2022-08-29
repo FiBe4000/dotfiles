@@ -161,6 +161,41 @@ modules-left   = ewmh
 wm-name    = polybar-workspaces
 wm-restack = bspwm
 
+[bar/workspaces3]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 7.2%
+height           = 28
+offset-x         = 4.5%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left   = ewmh
+
+wm-name    = polybar-workspaces
+wm-restack = bspwm
+
 [bar/spotify]
 monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
@@ -203,6 +238,42 @@ monitor-fallback = eDP-1
 width            = 30.5%
 height           = 28
 offset-x         = 14%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+enable-ipc       = true
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left = previous playpause next spotify
+
+wm-name    = polybar-spotify
+wm-restack = bspwm
+
+[bar/spotify3]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 30.5%
+height           = 28
+offset-x         = 12.2%
 offset-y         = 12
 radius           = 13.0
 fixed-center     = false
