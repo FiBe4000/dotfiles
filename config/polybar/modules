@@ -190,16 +190,16 @@ type = custom/menu
 expand-right = true
 
 label-open = %{T2}
-label-close = %{}  %{}
+label-close = %{T3}󰅖
 label-separator = 
 format-padding = 1
 format-spacing = 1
 format-background = ${colors.frost4}
 format-foreground = ${colors.foreground}
 
-menu-0-0 = %{T3}
+menu-0-0 = %{T3}󰐥
 menu-0-0-exec = systemctl poweroff
-menu-0-1 = %{T3}
+menu-0-1 = %{T3}󰜉
 menu-0-1-exec = systemctl reboot
 
 [module/ewmh]
@@ -233,17 +233,17 @@ label-empty-foreground = ${colors.mediumnight}
 label-empty-background = ${colors.darkestnight}
 
 icon-0  = Web;
-icon-1  = Terminals;
+icon-1  = Terminals;󰆍
 icon-2  = Code;
-icon-3  = Mail; 
-icon-4  = Chat;
-icon-5  = Music;
-icon-6  = VM;
-icon-7  = Etc1;
-icon-8  = Etc2;
-icon-9  = Etc3;
-icon-10 = Etc4;
-icon-11 = Etc5;
+icon-3  = Mail;󰇮
+icon-4  = Chat;󰍩
+icon-5  = Music;󰎄
+icon-6  = VM;󰍺
+icon-7  = Etc1;󰎥
+icon-8  = Etc2;󰎨
+icon-9  = Etc3;󰎫
+icon-10 = Etc4;󰎲
+icon-11 = Etc5;󰎯
 
 [module/bspwm]
 type                    = internal/bspwm
@@ -274,23 +274,23 @@ label-empty-padding    = 2
 label-empty-foreground = ${colors.mediumnight}
 label-empty-background = ${colors.darkestnight}
 
-ws-icon-0  = Web;
-ws-icon-1  = Terminals;
-ws-icon-2  = Code;
-ws-icon-3  = Mail; 
-ws-icon-4  = Chat;
-ws-icon-5  = Music;
-ws-icon-6  = VM;
-ws-icon-7  = Etc1;
-ws-icon-8  = Etc2;
-ws-icon-9  = Etc3;
-ws-icon-10 = Etc4;
-ws-icon-11 = Etc5;
+ws-icon-0  =Web;
+ws-icon-1  =Terminals;󰆍
+ws-icon-2  =Code;
+ws-icon-3  =Mail;󰇮
+ws-icon-4  =Chat;󰍩
+ws-icon-5  =Music;󰎄
+ws-icon-6  =VM;󰍺
+ws-icon-7  =Etc1;󰎥
+ws-icon-8  =Etc2;󰎨
+ws-icon-9  =Etc3;󰎫
+ws-icon-10 =Etc4;󰎲
+ws-icon-11 =Etc5;󰎯
 
 [module/cpu]
 type              = internal/cpu
 interval          = 1
-label             = %{T3} %{T1}%percentage%%
+label             = %{T3}󰍛 %{T1}%percentage%%
 format            = <label>
 format-foreground = ${colors.foreground}
 format-background = ${colors.orange}
@@ -302,7 +302,7 @@ interval          = 1
 format            = <label>
 format-padding    = 1
 format-background = ${colors.lightnight}
-label             = %{T3} %{T1}%percentage-cores%
+label             = %{T3}󰍛 %{T1}%percentage-cores%
 
 [module/cpu_temp]
 type             = internal/temperature
@@ -379,11 +379,11 @@ type      = internal/network
 interface = eno1
 interval  = 3.0
 
-format-connected            = %{T3} %{T1}<label-connected>
+format-connected            = %{T3}󰈀 %{T1}<label-connected>
 format-connected-padding    = 1
 format-connected-background = ${colors.darknight}
 format-connected-foreground = ${colors.foreground}
-label-connected             =  %downspeed%  %upspeed%
+label-connected             = 󰁅 %downspeed% 󰁝 %upspeed%
 
 [module/date]
 type     = internal/date
@@ -396,7 +396,7 @@ format-padding    = 1
 format-background = ${colors.lightnight}
 format-foreground = ${colors.foreground}
 
-label =   %date% %time%
+label = 󰸗  %date%󱑓 %time%
 
 [module/date2]
 type     = internal/date
@@ -409,7 +409,7 @@ format-padding    = 1
 format-background = ${colors.darkestnight}
 format-foreground = ${colors.foreground}
 
-label =   %date% %time% %{}
+label = 󰸗  %date%󱑓 %time% %{}
 
 [module/volume]
 type = internal/pulseaudio

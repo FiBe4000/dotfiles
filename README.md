@@ -36,3 +36,6 @@ v2.1.0
 
 v2.1.1
 * Added urgent color to workspaces in Polybar, new mouse cursor, general bug fixes.
+
+v2.1.2
+* Changed to new icons that works with latest version of Nerd Fonts, new cursor name after recent update, changed to Fira Code Nerd Font in terminal.
