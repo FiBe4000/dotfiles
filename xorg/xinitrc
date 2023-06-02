@@ -79,7 +79,7 @@ udiskie &
 spotify-listener &
 pactl load-module module-switch-on-connect
 polkit-dumb-agent &
-imwheel -b 45 &
+#imwheel -b 45 &
 flameshot &
 sleep 1
 exec bspwm
