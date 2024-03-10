@@ -36,6 +36,7 @@ Plugin 'numirias/semshi'
 Plugin 'junegunn/fzf.vim'
 "Plugin 'vim-scripts/DoxygenToolkit.vim'
 Plugin 'ryanoasis/vim-devicons'
+Plugin 'elkowar/yuck.vim'
 
 call vundle#end()
 filetype plugin indent on
@@ -336,7 +337,7 @@ set cursorline
 let &colorcolumn=join(range(81,999),",")
 
 " Neovide settings
-set guifont=DejaVuSansMono\ Nerd\ Font:h11
+set guifont=FiraCode\ Nerd\ Font:h10
 let g:neovide_refresh_rate=240
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

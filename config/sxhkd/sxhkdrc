@@ -168,6 +168,12 @@ ctrl + Print
 ctrl + shift + Print
 				flameshot gui
 
+XF86AudioPlay
+				playerctl -p $(tail -1 /tmp/player-last) play
+
+XF86AudioPause
+				playerctl -p $(tail -1 /tmp/player-last) pause
+
 #
 # misc
 #

@@ -118,6 +118,14 @@ content-padding    = 0
 content-background = ${colors.transparent}
 content-foreground = ${colors.yellow}
 
+[module/rightsep_green]
+type               = custom/text
+content            = 
+content-font       = 2
+content-padding    = 0
+content-background = ${colors.transparent}
+content-foreground = ${colors.green}
+
 [module/rightsep_frost3]
 type               = custom/text
 content            =  
@@ -506,41 +514,6 @@ animation-charging-4          = 
 format-charging-background    = ${colors.frost1}
 format-discharging-background = ${colors.frost1}
 
-[module/previous]
-type = custom/ipc
-format-font = 1
-format-foreground = ${colors.darkestnight}
-format-background = ${colors.transparent}
-; Default
-hook-0 = echo ""
-; When spotify active
-hook-1 = echo "  "
-click-left = "spotifyctl -q previous"
-
-[module/next]
-type = custom/ipc
-format-font = 1
-format-foreground = ${colors.darkestnight}
-format-background = ${colors.transparent}
-; Default
-hook-0 = echo ""
-; When spotify active
-hook-1 = echo "  "
-click-left = "spotifyctl -q next"
-
-[module/playpause]
-type = custom/ipc
-format-font = 1
-format-foreground = ${colors.darkestnight}
-format-background = ${colors.transparent}
-; Default
-hook-0 = echo ""
-; Playing
-hook-1 = echo "  "
-; Paused
-hook-2 = echo "  "
-click-left = "spotifyctl -q playpause"
-
 [module/spotify]
 type = custom/ipc
 format-font = 1
@@ -552,3 +525,37 @@ hook-1 = ~/.dotfiles/scripts/spotifypolybar.sh
 click-right = polybar-msg -p %pid% hook spotify 1
 double-click-right = polybar-msg -p %pid% hook spotify 2
 
+[module/playerctl]
+type = custom/script
+interval = 1
+format-padding = 2
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+exec = ~/.dotfiles/scripts/playerctlpolybar.sh
+exec-if = playerctl metadata -f {{playerName}} 2>/dev/null | grep -Ev 'mopidy' >/dev/null
+
+[module/previous]
+type = custom/script
+interval = 2
+format-padding = 0
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+exec = echo '' %{A1:playerctl -p $(tail -1 /tmp/player-last) previous:} %{A}
+exec-if = playerctl metadata -f {{playerName}} 2>/dev/null | grep -Ev 'mopidy' >/dev/null
+
+[module/next]
+type = custom/script
+interval = 2
+format-padding = 0
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+exec = echo '' %{A1:playerctl -p $(tail -1 /tmp/player-last) next:} %{A}
+exec-if = playerctl metadata -f {{playerName}} 2>/dev/null | grep -Ev 'mopidy' >/dev/null
+
+[module/playpause]
+type = custom/script
+interval = 0.3
+format-foreground = ${colors.darkestnight}
+format-background = ${colors.transparent}
+exec = echo '' %{A1:playerctl -p $(tail -1 /tmp/player-last) play-pause:}$(playerctl -p $(tail -1 /tmp/player-last) status 2>/dev/null | grep Playing >/dev/null && echo '  ' || echo '  ')%{A}
+exec-if = playerctl metadata -f {{playerName}} 2>/dev/null | grep -Ev 'mopidy' >/dev/null

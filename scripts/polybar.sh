@@ -56,13 +56,13 @@ else
 
     if [ ${#secondary_monitors[@]} -gt 2 ]; then
       MONITOR=$primary_monitor polybar workspaces3 &
-      MONITOR=$primary_monitor polybar spotify3 &
+      MONITOR=$primary_monitor polybar playerctl3 &
     elif [ ${#secondary_monitors[@]} -gt 1 ]; then
       MONITOR=$primary_monitor polybar workspaces2 &
-      MONITOR=$primary_monitor polybar spotify2 &
+      MONITOR=$primary_monitor polybar playerctl2 &
     else
       MONITOR=$primary_monitor polybar workspaces &
-      MONITOR=$primary_monitor polybar spotify &
+      MONITOR=$primary_monitor polybar playerctl &
     fi
 
     MONITOR=$primary_monitor polybar date &
