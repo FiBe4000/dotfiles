@@ -135,10 +135,10 @@ source ~/.zsh_local_additions
 # Command aliases
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
-alias ls='exa --git --icons'
-alias la='exa -lahg --git --icons'
-alias ll='exa -lhg --git --icons'
-alias lt='exa -T --icons'
+alias ls='eza --git --icons'
+alias la='eza -lahg --git --icons'
+alias ll='eza -lhg --git --icons'
+alias lt='eza -T --icons'
 alias ytop='ytop -p -s'
 alias icat='kitty +kitten icat'
 

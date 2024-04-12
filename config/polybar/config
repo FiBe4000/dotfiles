@@ -43,7 +43,7 @@ module-margin-right = 0
 
 include-file = ~/.config/polybar/fonts
 
-modules-left   = powermenu rightsep_frost3 ewmh rightsep_darkestnight spotify
+modules-left   = powermenu rightsep_frost3 ewmh rightsep_darkestnight playerctl
 modules-center = date
 modules-right  = leftsep_orange cpu leftsep_green cpu_temp leftsep_purple memory leftsep_frost4 volume leftsep_darkestnight
 
@@ -161,7 +161,42 @@ modules-left   = ewmh
 wm-name    = polybar-workspaces
 wm-restack = bspwm
 
-[bar/spotify]
+[bar/workspaces3]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 7.2%
+height           = 28
+offset-x         = 4.5%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left   = ewmh
+
+wm-name    = polybar-workspaces
+wm-restack = bspwm
+
+[bar/playerctl]
 monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 30.5%
@@ -170,7 +205,7 @@ offset-x         = 23%
 offset-y         = 12
 radius           = 13.0
 fixed-center     = false
-enable-ipc       = true
+enable-ipc       = false
 
 dpi-x = 96
 dpi-y = 96
@@ -192,12 +227,12 @@ module-margin-right = 0
 
 include-file = ~/.config/polybar/fonts
 
-modules-left = previous playpause next spotify
+modules-left = previous playpause next playerctl
 
-wm-name    = polybar-spotify
+wm-name    = polybar-playerctl
 wm-restack = bspwm
 
-[bar/spotify2]
+[bar/playerctl2]
 monitor          = ${env:MONITOR}
 monitor-fallback = eDP-1
 width            = 30.5%
@@ -206,7 +241,7 @@ offset-x         = 14%
 offset-y         = 12
 radius           = 13.0
 fixed-center     = false
-enable-ipc       = true
+enable-ipc       = false
 
 dpi-x = 96
 dpi-y = 96
@@ -228,9 +263,45 @@ module-margin-right = 0
 
 include-file = ~/.config/polybar/fonts
 
-modules-left = previous playpause next spotify
+modules-left = previous playpause next playerctl
 
-wm-name    = polybar-spotify
+wm-name    = polybar-playerctl
+wm-restack = bspwm
+
+[bar/playerctl3]
+monitor          = ${env:MONITOR}
+monitor-fallback = eDP-1
+width            = 30.5%
+height           = 28
+offset-x         = 12.2%
+offset-y         = 12
+radius           = 13.0
+fixed-center     = false
+enable-ipc       = false
+
+dpi-x = 96
+dpi-y = 96
+
+background = ${colors.transparent}
+foreground = ${colors.foreground}
+
+line-size        = 0
+label-line-color = #f00
+
+border-size  = 0
+border-color = ${colors.lightnight}
+
+padding-left  = 0
+padding-right = 0
+
+module-margin-left  = 0
+module-margin-right = 0
+
+include-file = ~/.config/polybar/fonts
+
+modules-left = previous playpause next playerctl
+
+wm-name    = polybar-playerctl
 wm-restack = bspwm
 
 [bar/date]

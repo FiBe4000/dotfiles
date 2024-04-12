@@ -1,0 +1,16 @@
+#!/bin/bash
+#xrandr --dpi 210
+setxkbmap us
+#xmodmap ~/.dotfiles/other/escremap
+#$HOME/.dotfiles/scripts/polybar.sh
+
+MONITOR=DP-1-1 polybar power &
+MONITOR=DP-1-1 polybar workspaces2 &
+MONITOR=DP-1-1 polybar spotify2 &
+MONITOR=DP-1-1 polybar date &
+MONITOR=DP-1-1 polybar tray &
+MONITOR=DP-1-1 polybar sensorsbat &
+MONITOR=DP-1-2 polybar second &
+
+feh --bg-fill $HOME/Pictures/wallpaper/11.png
+#wpg -m
