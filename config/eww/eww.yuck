@@ -1,0 +1,277 @@
+;(defpoll playeractive
+  ;:interval "1s"
+  ;`if [[ "$(playerctl -l 2>&1)" == "No players found" ]]; then echo false; else echo true; fi`
+;)
+
+(defvar playeractive false)
+(defvar volumereveal false)
+
+(defpoll playpause
+  :interval "0.3s"
+  :run-while playeractive
+  `playerctl -p $(tail -1 /tmp/player-last) status 2>/dev/null | grep Playing >/dev/null && echo '' || echo ''`)
+
+(defpoll mediainfo
+  :interval "1s"
+  :run-while playeractive
+  "bash ~/.config/eww/scripts/getmediainfo.sh")
+
+(deflisten workspaces :initial "[]" "bash ~/.config/eww/scripts/get-workspaces")
+
+(deflisten current_workspace :initial "1" "bash ~/.config/eww/scripts/get-active-workspace")
+
+(defwindow bar
+  :exclusive true
+  :monitor 0
+  :windowtype "dock"
+  :stacking "bg"
+  :focusable false
+  :geometry (geometry
+              :width "100%"
+              :height "28px"
+              :anchor "top center")
+  (main_bar)
+)
+
+(defwidget main_bar []
+  (centerbox :class "main_container"
+    :orientation "h"
+    (box :class "left_modules"
+         :orientation "h"
+         :space-evenly false
+         :halign "start"
+         :spacing 12
+    (power)
+    (workspaces)
+    (media_player))
+    (box :class "center_modules"
+         :orientation "h"
+         :space-evenly false
+         :halign "center"
+         :spacing 12
+    (date)
+    (clock))
+    (box :class "right_modules"
+         :orientation "h"
+         :space-evenly false
+         :halign "end"
+         :spacing 12
+    (sensors)
+    (system_tray))
+  )
+)
+
+(defwidget date []
+  (box
+    :class "date"
+    :orientation "h"
+    :spacing 12
+    :space-evenly false
+    (label :class "date_icon" :text "󰸗")
+    (label :text {formattime(EWW_TIME, "%a %d %b")})
+  )
+)
+
+(defwidget clock []
+  (box
+    :class "clock"
+    :orientation "h"
+    :spacing 12
+    :space-evenly false
+    (label :class "clock_icon" :text "󱑓")
+    (label :text {formattime(EWW_TIME, "%H:%M:%S")})
+  )
+)
+
+(defwidget power []
+  (box
+    :class "power"
+    :orientation "h"
+    :space-evenly false
+    (button :class "power_button" :onclick "hyprctl dispatch workspace 1" "")
+  )
+)
+
+(defwidget workspaces []
+  (eventbox
+    :onscroll "bash ~/.config/eww/scripts/change-active-workspace {} ${current_workspace}" :class "workspaces_scroll"
+    (box 
+      :class "workspaces"
+      :orientation "h"
+      :space-evenly true
+      :spacing 15
+      :halign "start"
+      (label 
+        :text "${workspaces}${current_workspace}"
+        :visible false)
+      (for workspace in workspaces
+        (eventbox 
+          :onclick "hyprctl dispatch workspace ${workspace.id}"
+          (box
+            :class "workspace_entry ${workspace.id == current_workspace ? "current" : ""} ${workspace.windows > 0 ? "occupied" : "empty"}"
+            (label
+              :class "workspace_buttons"
+              :text "${workspace.id == 1 ? "" :
+                        workspace.id == 2 ? "󰆍" :
+                          workspace.id == 3 ? "" :
+                            workspace.id == 4 ? "󰇮" :
+                              workspace.id == 5 ? "󰍩" :
+                                workspace.id == 6 ? "󰎄" :
+                                  workspace.id == 7 ? "󰍺" :
+                                    workspace.id == 8 ? "󰎥" :
+                                      workspace.id == 9 ? "󰎨" :
+                                        workspace.id == 10 ? "󰎫" : ""}")
+          )
+        )
+      )
+    )
+  )
+)
+
+(defwidget media_player []
+  (box
+    :class "media_player"
+    :orientation "h"
+    :spacing 12
+    :space-evenly false
+    :visible playeractive
+    (media_controls)
+    (media_info)
+  )
+)
+
+(defwidget media_controls []
+  (box
+    :class "media_controls"
+    :orientation "h"
+    :spacing 12
+    :space-evenly false
+    (button :class "previous_button"
+            :onclick "playerctl -p $(tail -1 /tmp/player-last) previous"
+            "")
+    (button :class "play_pause_button"
+            :onclick "playerctl -p $(tail -1 /tmp/player-last) play-pause"
+            "${playpause}")
+    (button :class "next_button"
+            :onclick "playerctl -p $(tail -1 /tmp/player-last) next"
+            "")
+  )
+)
+
+(defwidget media_info []
+  (box
+    :class "media_info"
+    :orientation "h"
+    (label :text "${mediainfo}")
+  )
+)
+
+(defwidget sensors []
+  (box
+    :class "sensors"
+    :orientation "h"
+    :spacing 12
+    :space-evenly true
+    (memory)
+    (cpu_temperature)
+    (cpu)
+    (volume)
+    (battery)
+  )
+)
+
+(defwidget memory []
+  (box
+    :class "memory"
+    :orientation "h"
+    :spacing 12
+    :halign "center"
+    :space-evenly false
+    (label :style "font-size: 20px;" :text "")
+    (label :text "${round(EWW_RAM.used_mem_perc, 0)}%")
+  )
+)
+
+(defwidget cpu_temperature []
+  (box
+    :class "cpu_temperature"
+    :orientation "h"
+    :spacing 12
+    :halign "center"
+    :space-evenly false
+    (label :style "font-size: 16px;" :text "")
+    (label :text "${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C")
+  )
+)
+
+(defwidget cpu []
+  (box
+    :class "cpu"
+    :orientation "h"
+    :spacing 12
+    :halign "center"
+    :space-evenly false
+    (label :style "font-size: 20px;" :text "󰍛")
+    (label :text "${round(EWW_CPU.avg, 0)}%")
+  )
+)
+
+(defwidget volume []
+  (box
+    :class "volume"
+    :orientation "h"
+    :space-evenly false
+    :halign "center"
+    (eventbox
+      :onhover "eww update volumereveal=true"
+      :onhoverlost "eww update volumereveal=false"
+      (box
+        :orientation "h"
+        :spacing 12
+        :space-evenly false
+        :halign "center"
+        (label :style "font-size: 22px;" :text "")
+        (label :text "50%")
+        (revealer
+          :reveal volumereveal
+          :transition "slideleft"
+          (label :text "${volumereveal}")
+        )
+      )
+    )
+  )
+)
+
+(defwidget battery []
+  (box
+    :class "battery"
+    :orientation "h"
+    :spacing 12
+    :halign "center"
+    :space-evenly false
+    (label :text {EWW_BATTERY.BAT0.status == 'Charging' ? "󰂄" :
+                    EWW_BATTERY.BAT0.status == 'Full' ? "󰂄" :
+                      EWW_BATTERY.BAT0.capacity <= 5 ? "󱃍" :
+                        EWW_BATTERY.BAT0.capacity <= 10 ? "󰁺" :
+                          EWW_BATTERY.BAT0.capacity <= 20 ? "󰁻" :
+                            EWW_BATTERY.BAT0.capacity <= 30 ? "󰁼" :
+                              EWW_BATTERY.BAT0.capacity <= 40 ? "󰁽" :
+                                EWW_BATTERY.BAT0.capacity <= 50 ? "󰁾" :
+                                  EWW_BATTERY.BAT0.capacity <= 60 ? "󰁿" :
+                                    EWW_BATTERY.BAT0.capacity <= 70 ? "󰂀" :
+                                      EWW_BATTERY.BAT0.capacity <= 80 ? "󰂁" :
+                                        EWW_BATTERY.BAT0.capacity <= 90 ? "󰂂" :
+                                          EWW_BATTERY.BAT0.capacity <= 100 ? "󰁹" : ""})
+    (label :text "${EWW_BATTERY.BAT0.capacity}%")
+  )
+)
+
+(defwidget system_tray []
+  (systray :class "system_tray"
+           :spacing 5
+           :orientation "h"
+           :icon-size 24
+           :space-evenly true
+           :prepend-new false
+  )
+)

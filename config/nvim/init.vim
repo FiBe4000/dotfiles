@@ -337,7 +337,7 @@ set cursorline
 let &colorcolumn=join(range(81,999),",")
 
 " Neovide settings
-set guifont=FiraCode\ Nerd\ Font:h10
+set guifont=FiraCode\ Nerd\ Font\ Mono\ Med:h11
 let g:neovide_refresh_rate=240
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

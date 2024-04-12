@@ -1,0 +1,304 @@
+// Polar Night
+$darkestnight: #2e3440;
+$darknight:    #3b4252;
+$mediumnight:  #434c5e;
+$lightnight:   #4c566a;
+
+// Snowstorm
+$darksnow:   #d8dee9;
+$mediumsnow: #e5e9f0;
+$lightsnow:  #eceff4;
+
+// Frost
+$frost1: #8fbcbb;
+$frost2: #88c0d0;
+$frost3: #81a1c1;
+$frost4: #5e81ac;
+
+// Aurora
+$red:    #bf616a;
+$orange: #d08770;
+$yellow: #ebcb8b;
+$green:  #a3be8c;
+$purple: #b48ead;
+
+// Functional
+$transparent: rgba(#000000, 0);
+$transparentdarkestnight: rgba(#2e3440, 0.5);
+
+* {
+  all: unset; //Unsets everything so you can style everything from scratch
+}
+
+//Global Styles
+.bar {
+  background-color: $transparent;
+  color: #b0b4bc;
+  padding: 0px;
+  font-family: DejaVuSansM Nerd Font Mono;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 0px;
+  margin-left: 12px;
+  margin-right: 12px;
+  margin-bottom: 12px;
+}
+
+.main_container {
+  background-color: $transparent;
+  color: $lightsnow;
+  padding: 0px;
+}
+
+.left_modules {
+  border-radius: 20px;
+  color: $lightsnow;
+  padding: 0px;
+}
+
+.center_modules {
+  background-color: $darkestnight;
+  border-radius: 0px 0px 20px 20px;
+  color: $lightsnow;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-color: $lightnight;
+  padding: 0px;
+  //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.19);  
+}
+
+.right_modules {
+  border-radius: 20px;
+  color: $lightsnow;
+  padding: 0px;
+}
+
+.workspaces {
+  background-color: $darkestnight;
+  border-radius: 0px 0px 20px 20px;
+  color: $lightsnow;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-color: $lightnight;
+  padding-left: 15px;
+  padding-right: 15px;
+  padding-bottom: 5px;
+  font-size: 25px;
+}
+
+.media_controls {
+  all: unset;
+  background-color: $darkestnight;
+  color: $green;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $lightnight;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 20px;
+}
+
+.media_info {
+  all: unset;
+  color: $darkestnight;
+  border-style: solid;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.occupied {
+  all: unset;
+  color: $frost4;
+}
+
+.empty {
+  all: unset;
+  color: $lightnight;
+}
+
+.current {
+  all: unset;
+  color: $lightsnow;
+  font-size: 30px;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-color: $lightsnow;
+}
+
+.date {
+  all: unset;
+  color: $lightsnow;
+}
+
+.power {
+  all: unset;
+  background-color: $darkestnight;
+  color: $lightsnow;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-color: $lightnight;
+  border-radius: 0px 0px 20px 20px;
+  padding-left: 15px;
+  padding-right: 15px;
+  padding-bottom: 5px;
+  padding-right: 15px;
+}
+
+.sensors {
+  all: unset;
+  background-color: $darkestnight;
+  color: $lightsnow;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-color: $lightnight;
+  border-radius: 0px 0px 20px 20px;
+  padding-left: 15px;
+  padding-bottom: 5px;
+  padding-right: 15px;
+}
+
+.memory {
+  all: unset;
+  color: $orange;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $orange;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.cpu_temperature {
+  all: unset;
+  color: $green;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $green;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.cpu {
+  all: unset;
+  color: $purple;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $purple;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.volume {
+  all: unset;
+  color: $frost4;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $frost4;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.battery {
+  all: unset;
+  color: $frost1;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $frost1;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.power_button {
+  all: unset;
+  transition: color 0.5s;
+  color: $frost4;
+  font-size: 25px;
+}
+
+.power_button:hover {
+  transition: color 0.5s;
+  color: $lightsnow;
+}
+
+.clock {
+  all: unset;
+  color: $lightsnow;
+  padding-right: 15px;
+}
+
+.date_icon {
+  all: unset;
+  color: $lightsnow;
+  font-size: 25px;
+  padding-left: 15;
+  padding-bottom: 3px;
+}
+
+.clock_icon {
+  all: unset;
+  color: $lightsnow;
+  font-size: 25px;
+  padding-bottom: 3px;
+}
+
+.system_tray {
+  all: unset;
+  background-color: $darkestnight;
+  border-radius: 20px;
+  color: $lightsnow;
+  border-style: solid;
+  border-width: 0px 3px 3px 3px;
+  border-color: $lightnight;
+  border-radius: 0px 0px 20px 20px;
+  color: $lightsnow;
+  padding-left: 15px;
+  padding-right: 15px;
+  //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.19);  
+}
+
+// Styles on classes (see eww.yuck for more information)
+
+.metric scale trough highlight {
+  all: unset;
+  background-color: #D35D6E;
+  color: #000000;
+  border-radius: 10px;
+}
+
+.metric scale trough {
+  all: unset;
+  background-color: #4e4e4e;
+  border-radius: 50px;
+  min-height: 3px;
+  min-width: 50px;
+  margin-left: 10px;
+  margin-right: 20px;
+}
+
+.metric scale trough highlight {
+  all: unset;
+  background-color: #D35D6E;
+  color: #000000;
+  border-radius: 10px;
+}
+
+.metric scale trough {
+  all: unset;
+  background-color: #4e4e4e;
+  border-radius: 50px;
+  min-height: 3px;
+  min-width: 50px;
+  margin-left: 10px;
+  margin-right: 20px;
+}
+
+.label-ram {
+  font-size: large;
+}
+
