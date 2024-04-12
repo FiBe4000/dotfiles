@@ -7,13 +7,13 @@ if [ $dnd == "false" ]; then
     icon=" "
     printformat='{{artist}} - {{title}}'
     stringlength='75'
-  elif playerctl -p $(tail -1 /tmp/player-last) metadata | grep -q 'YouTube Music'; then
-    icon=" Music "
-    printformat='{{title}}'
+  elif playerctl -p $(tail -1 /tmp/player-last) metadata | grep -q 'music.youtube'; then
+    icon="󰗃 Music "
+    printformat='{{artist}} - {{title}}'
     stringlength='70'
-  elif playerctl -p $(tail -1 /tmp/player-last) metadata | grep -q 'YouTube'; then
-    icon=" "
-    printformat='{{title}}'
+  elif playerctl -p $(tail -1 /tmp/player-last) metadata | grep -q 'youtube'; then
+    icon="󰗃 "
+    printformat='{{artist}} - {{title}}'
     stringlength='75'
   elif playerctl -p $(tail -1 /tmp/player-last) metadata | grep -q 'chromium'; then
     icon=" "
