@@ -1,4 +1,4 @@
-################################                        
+################################
 ################################
 ##                            ##
 ##  ███████╗███████╗██╗  ██╗  ##
@@ -8,8 +8,8 @@
 ##  ███████╗███████║██║  ██║  ##
 ##  ╚══════╝╚══════╝╚═╝  ╚═╝  ##
 ##                            ##
-################################                        
-################################                        
+################################
+################################
 
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
@@ -135,8 +135,8 @@ source ~/.zsh_local_additions
 # Command aliases
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
-alias ls='eza --git --icons'
-alias la='eza -lahg --git --icons'
+alias ls='eza --git --icons --classify=automatic'
+alias la='eza -lahg --git --icons --classify=automatic'
 alias ll='eza -lhg --git --icons'
 alias lt='eza -T --icons'
 alias ytop='ytop -p -s'

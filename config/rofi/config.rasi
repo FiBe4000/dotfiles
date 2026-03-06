@@ -9,7 +9,7 @@ configuration {
 	terminal: "rofi-sensible-terminal";
 	ssh-client: "ssh";
 	ssh-command: "{terminal} -e {ssh-client} {host}";
-	run-command: "{cmd}";
+	run-command: "uwsm app -- {cmd}";
 	parse-hosts: true;
 	matching: "normal";
 	display-window: "Window";
