@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# Listens for monitor hotplug events and manages eDP-1 (laptop display).
+# When external monitors are connected: disables eDP-1
+# When all external monitors are removed: re-enables eDP-1
+# Respects manual toggle via /tmp/hypr-laptop-display-forced state file
+
+SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+STATE_FILE="/tmp/hypr-laptop-display-forced"
+LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
+
+count_external_monitors() {
+    hyprctl monitors -j | jq '[.[] | select(.name != "eDP-1")] | length'
+}
+
+handle_monitors() {
+    local external_count
+    external_count=$(count_external_monitors)
+
+    if [[ "$external_count" -gt 0 ]]; then
+        # External monitors present — disable laptop display (unless manually forced on)
+        if [[ ! -f "$STATE_FILE" ]]; then
+            hyprctl keyword monitor "eDP-1,disable"
+        fi
+        hyprctl keyword misc:vrr 0
+    else
+        # No external monitors — enable laptop display (standalone: 120Hz, 140% scale, 10-bit, VRR)
+        rm -f "$STATE_FILE"
+        hyprctl keyword monitor "eDP-1,2880x1800@120,0x0,1.333333,bitdepth,10"
+        hyprctl keyword misc:vrr 1
+    fi
+
+    # Refresh eww bars
+    [[ -x "$LAUNCH_BARS" ]] && "$LAUNCH_BARS"
+}
+
+# Handle initial state on startup (small delay to let monitors settle)
+sleep 2
+handle_monitors
+
+# Listen for monitor events
+socat -u UNIX-CONNECT:"$SOCKET" - | while read -r line; do
+    case "$line" in
+        monitoraddedv2\>\>*|monitorremoved\>\>*)
+            # Small delay to let Hyprland finish processing
+            sleep 0.3
+            handle_monitors
+            ;;
+    esac
+done

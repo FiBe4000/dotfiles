@@ -1,0 +1,26 @@
+# Nord Color Scheme
+# https://www.nordtheme.com/docs/colors-and-palettes
+
+# Background shades (Polar Night) - dark to light
+bg0=2e3440
+bg1=3b4252
+bg2=434c5e
+bg3=4c566a
+
+# Foreground shades (Snow Storm) - dark to light
+fg0=d8dee9
+fg1=e5e9f0
+fg2=eceff4
+
+# Accent colors (Frost)
+accent0=8fbcbb
+accent1=88c0d0
+accent2=81a1c1
+accent3=5e81ac
+
+# Semantic colors (Aurora)
+red=bf616a
+orange=d08770
+yellow=ebcb8b
+green=a3be8c
+purple=b48ead

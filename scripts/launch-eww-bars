@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# Launches eww bars on the appropriate monitors.
+# - Standalone (no external monitors): bar on eDP-1
+# - Docked (external monitors): bar on each external monitor, no bar on eDP-1
+#
+# Eww uses monitor indices (not Hyprland connector names) for --screen.
+# We map from hyprctl monitor data to eww indices.
+
+# Close all existing bar instances
+for id in $(eww windows | grep '^*bar-' | sed 's/^\*//'); do
+    eww close "$id" 2>/dev/null
+done
+
+# Get monitor info: name and eww index (based on order from hyprctl)
+monitor_data=$(hyprctl monitors -j | jq -r 'to_entries[] | "\(.value.name) \(.key)"')
+
+# Check if any external monitors exist
+has_external=false
+while IFS=' ' read -r name idx; do
+    if [[ "$name" != "eDP-1" ]]; then
+        has_external=true
+        break
+    fi
+done <<< "$monitor_data"
+
+# Open bars on the right monitors
+while IFS=' ' read -r name idx; do
+    if [[ "$has_external" == true ]]; then
+        # Docked — bars on external monitors only
+        if [[ "$name" != "eDP-1" ]]; then
+            eww open bar --screen "$idx" --id "bar-${name}"
+        fi
+    else
+        # Standalone — bar on laptop display
+        eww open bar --screen "$idx" --id "bar-${name}"
+    fi
+done <<< "$monitor_data"

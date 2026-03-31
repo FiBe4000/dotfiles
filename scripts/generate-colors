@@ -1,0 +1,190 @@
+#!/bin/bash
+# Generate format-specific color files from a single color scheme source.
+# Usage: generate-colors [scheme]
+# Default scheme: nord
+
+set -euo pipefail
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+SCHEME="${1:-nord}"
+SOURCE="$DOTFILES/colors/$SCHEME"
+
+if [[ ! -f "$SOURCE" ]]; then
+    echo "Error: Color scheme '$SOURCE' not found" >&2
+    exit 1
+fi
+
+# Parse the source file into an associative array
+declare -A colors
+while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+    colors["$key"]="$value"
+done < "$SOURCE"
+
+NAMES=(bg0 bg1 bg2 bg3 fg0 fg1 fg2 accent0 accent1 accent2 accent3 red orange yellow green purple)
+
+# Verify all expected colors are present
+for name in "${NAMES[@]}"; do
+    if [[ -z "${colors[$name]+x}" ]]; then
+        echo "Error: Missing color '$name' in $SOURCE" >&2
+        exit 1
+    fi
+done
+
+header="# Generated from colors/$SCHEME — do not edit manually"
+
+# --- Hyprland (hyprlang variables) ---
+cat > "$DOTFILES/config/hypr/colors.conf" << EOF
+$header
+
+\$bg0 = rgb(${colors[bg0]})
+\$bg1 = rgb(${colors[bg1]})
+\$bg2 = rgb(${colors[bg2]})
+\$bg3 = rgb(${colors[bg3]})
+
+\$fg0 = rgb(${colors[fg0]})
+\$fg1 = rgb(${colors[fg1]})
+\$fg2 = rgb(${colors[fg2]})
+
+\$accent0 = rgb(${colors[accent0]})
+\$accent1 = rgb(${colors[accent1]})
+\$accent2 = rgb(${colors[accent2]})
+\$accent3 = rgb(${colors[accent3]})
+
+\$red = rgb(${colors[red]})
+\$orange = rgb(${colors[orange]})
+\$yellow = rgb(${colors[yellow]})
+\$green = rgb(${colors[green]})
+\$purple = rgb(${colors[purple]})
+EOF
+echo "  Generated config/hypr/colors.conf"
+
+# --- eww (SCSS variables) ---
+cat > "$DOTFILES/config/eww/_colors.scss" << EOF
+// $header
+
+\$bg0: #${colors[bg0]};
+\$bg1: #${colors[bg1]};
+\$bg2: #${colors[bg2]};
+\$bg3: #${colors[bg3]};
+
+\$fg0: #${colors[fg0]};
+\$fg1: #${colors[fg1]};
+\$fg2: #${colors[fg2]};
+
+\$accent0: #${colors[accent0]};
+\$accent1: #${colors[accent1]};
+\$accent2: #${colors[accent2]};
+\$accent3: #${colors[accent3]};
+
+\$red: #${colors[red]};
+\$orange: #${colors[orange]};
+\$yellow: #${colors[yellow]};
+\$green: #${colors[green]};
+\$purple: #${colors[purple]};
+EOF
+echo "  Generated config/eww/_colors.scss"
+
+# --- swaync (GTK CSS @define-color) ---
+mkdir -p "$DOTFILES/config/swaync"
+cat > "$DOTFILES/config/swaync/colors.css" << EOF
+/* $header */
+
+@define-color bg0 #${colors[bg0]};
+@define-color bg1 #${colors[bg1]};
+@define-color bg2 #${colors[bg2]};
+@define-color bg3 #${colors[bg3]};
+
+@define-color fg0 #${colors[fg0]};
+@define-color fg1 #${colors[fg1]};
+@define-color fg2 #${colors[fg2]};
+
+@define-color accent0 #${colors[accent0]};
+@define-color accent1 #${colors[accent1]};
+@define-color accent2 #${colors[accent2]};
+@define-color accent3 #${colors[accent3]};
+
+@define-color red #${colors[red]};
+@define-color orange #${colors[orange]};
+@define-color yellow #${colors[yellow]};
+@define-color green #${colors[green]};
+@define-color purple #${colors[purple]};
+EOF
+echo "  Generated config/swaync/colors.css"
+
+# --- rofi (rasi variables) ---
+cat > "$DOTFILES/config/rofi/colors.rasi" << EOF
+/* $header */
+
+* {
+    bg0: #${colors[bg0]};
+    bg1: #${colors[bg1]};
+    bg2: #${colors[bg2]};
+    bg3: #${colors[bg3]};
+
+    fg0: #${colors[fg0]};
+    fg1: #${colors[fg1]};
+    fg2: #${colors[fg2]};
+
+    accent0: #${colors[accent0]};
+    accent1: #${colors[accent1]};
+    accent2: #${colors[accent2]};
+    accent3: #${colors[accent3]};
+
+    red: #${colors[red]};
+    orange: #${colors[orange]};
+    yellow: #${colors[yellow]};
+    green: #${colors[green]};
+    purple: #${colors[purple]};
+
+    bg0-overlay: #${colors[bg0]}66;
+}
+EOF
+echo "  Generated config/rofi/colors.rasi"
+
+# --- kitty (terminal color config) ---
+cat > "$DOTFILES/config/kitty/colors.conf" << EOF
+$header
+
+foreground            #${colors[fg0]}
+background            #${colors[bg0]}
+selection_foreground  #${colors[bg0]}
+selection_background  #${colors[fg0]}
+cursor                #${colors[accent2]}
+url_color             #${colors[accent1]}
+
+# black
+color0   #${colors[bg1]}
+color8   #${colors[bg3]}
+
+# red
+color1   #${colors[red]}
+color9   #${colors[red]}
+
+# green
+color2   #${colors[green]}
+color10  #${colors[green]}
+
+# yellow
+color3   #${colors[yellow]}
+color11  #${colors[yellow]}
+
+# blue
+color4   #${colors[accent2]}
+color12  #${colors[accent2]}
+
+# magenta
+color5   #${colors[purple]}
+color13  #${colors[purple]}
+
+# cyan
+color6   #${colors[accent1]}
+color14  #${colors[accent0]}
+
+# white
+color7   #${colors[fg1]}
+color15  #${colors[fg2]}
+EOF
+echo "  Generated config/kitty/colors.conf"
+
+echo "Done! All color configs generated from colors/$SCHEME."

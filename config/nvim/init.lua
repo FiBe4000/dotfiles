@@ -96,7 +96,7 @@ vim.opt.colorcolumn = table.concat(cols, ",")
 if vim.g.neovide then
   -- Font: pick what you use (examples). Adjust size to match your old feel.
   -- Common Nerd Fonts: "JetBrainsMono Nerd Font", "FiraCode Nerd Font", "Hack Nerd Font"
-  -- vim.o.guifont = "FiraCode Nerd Font:h10"
+  vim.o.guifont = "FiraCode Nerd Font:h12"
 
   -- Optional: fine-tune scaling if you used Ctrl+scroll a lot
   vim.g.neovide_scale_factor = 1.0

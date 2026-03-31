@@ -1,3 +1,5 @@
+@import "colors.rasi"
+
 configuration {
 	modi: "window,run,ssh,drun";
 	font: "DejaVuSans Mono 20";
@@ -36,7 +38,7 @@ window {
 	//color-normal: "#002e3440, #d8dee9, #002e3440, #005e81ac, #5e81ac";
 	//color-urgent: "#2e3440, #d6b48d, #22231D, #d6b48d, #d8dee9";
 	//color-active: "#2e3440, #a3be8c, #2e3440, #a3be8c, #2e3440";
-	background-color: #2e344066;
+	background-color: @bg0-overlay;
 	//, #5e81ac, #724a3d;
 }
 
@@ -49,15 +51,15 @@ mainbox {
 
 inputbar {
 	orientation: horizontal;
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 prompt {
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 entry {
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 listview {
@@ -74,34 +76,35 @@ element {
 
 element normal.normal {
 	background-color: inherit;
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 element normal.active {
 	background-color: inherit;
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 element alternate.normal {
 	background-color: inherit;
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 element alternate.active {
 	background-color: inherit;
-	text-color: #d8dee9;
+	text-color: @fg0;
 }
 
 element selected.normal {
 	background-color: inherit;
-	text-color: #5e81ac;
+	text-color: @accent3;
 }
 
 element selected.active {
 	background-color: inherit;
-	text-color: #5e81ac;
+	text-color: @accent3;
 }
 
 element-text selected {
-	highlight: underline #5e81ac;
+	text-color: @accent3;
+	highlight: underline;
 }
