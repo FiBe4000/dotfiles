@@ -101,6 +101,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   # Zsh, general
   sudo -u $user ln -sfn $dotfilespath/zsh/zprofile                                   $home/.zprofile
   sudo -u $user ln -sfn $dotfilespath/zsh/zshrc                                      $home/.zshrc
+  sudo -u $user ln -sfn $dotfilespath/zsh/colors.zsh                                 $home/.zsh_colors
 
   echo "done."
 else

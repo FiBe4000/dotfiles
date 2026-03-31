@@ -21,7 +21,7 @@ while IFS='=' read -r key value; do
     colors["$key"]="$value"
 done < "$SOURCE"
 
-NAMES=(bg0 bg1 bg2 bg3 fg0 fg1 fg2 accent0 accent1 accent2 accent3 red orange yellow green purple)
+NAMES=(bg0 bg1 bg2 bg3 fg0 fg1 fg2 accent0 accent1 accent2 accent3 red orange yellow green blue purple)
 
 # Verify all expected colors are present
 for name in "${NAMES[@]}"; do
@@ -55,6 +55,7 @@ $header
 \$orange = rgb(${colors[orange]})
 \$yellow = rgb(${colors[yellow]})
 \$green = rgb(${colors[green]})
+\$blue = rgb(${colors[blue]})
 \$purple = rgb(${colors[purple]})
 EOF
 echo "  Generated config/hypr/colors.conf"
@@ -81,6 +82,7 @@ cat > "$DOTFILES/config/eww/_colors.scss" << EOF
 \$orange: #${colors[orange]};
 \$yellow: #${colors[yellow]};
 \$green: #${colors[green]};
+\$blue: #${colors[blue]};
 \$purple: #${colors[purple]};
 EOF
 echo "  Generated config/eww/_colors.scss"
@@ -108,6 +110,7 @@ cat > "$DOTFILES/config/swaync/colors.css" << EOF
 @define-color orange #${colors[orange]};
 @define-color yellow #${colors[yellow]};
 @define-color green #${colors[green]};
+@define-color blue #${colors[blue]};
 @define-color purple #${colors[purple]};
 EOF
 echo "  Generated config/swaync/colors.css"
@@ -135,6 +138,7 @@ cat > "$DOTFILES/config/rofi/colors.rasi" << EOF
     orange: #${colors[orange]};
     yellow: #${colors[yellow]};
     green: #${colors[green]};
+    blue: #${colors[blue]};
     purple: #${colors[purple]};
 
     bg0-overlay: #${colors[bg0]}66;
@@ -150,7 +154,7 @@ foreground            #${colors[fg0]}
 background            #${colors[bg0]}
 selection_foreground  #${colors[bg0]}
 selection_background  #${colors[fg0]}
-cursor                #${colors[accent2]}
+cursor                #${colors[blue]}
 url_color             #${colors[accent1]}
 
 # black
@@ -170,8 +174,8 @@ color3   #${colors[yellow]}
 color11  #${colors[yellow]}
 
 # blue
-color4   #${colors[accent2]}
-color12  #${colors[accent2]}
+color4   #${colors[blue]}
+color12  #${colors[blue]}
 
 # magenta
 color5   #${colors[purple]}
@@ -186,5 +190,13 @@ color7   #${colors[fg1]}
 color15  #${colors[fg2]}
 EOF
 echo "  Generated config/kitty/colors.conf"
+
+# --- zsh (shell variables for prompt theming) ---
+cat > "$DOTFILES/zsh/colors.zsh" << EOF
+$header
+
+THEME_ACCENT2='#${colors[accent2]}'
+EOF
+echo "  Generated zsh/colors.zsh"
 
 echo "Done! All color configs generated from colors/$SCHEME."
