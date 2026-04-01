@@ -8,7 +8,7 @@
 # We map from hyprctl monitor data to eww indices.
 
 # Close all existing bar instances
-for id in $(eww windows | grep '^*bar-' | sed 's/^\*//'); do
+for id in $(eww list-windows | grep '^*bar-' | sed 's/^\*//'); do
     eww close "$id" 2>/dev/null
 done
 

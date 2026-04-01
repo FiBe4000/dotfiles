@@ -1,12 +1,7 @@
 #!/bin/sh
 
-if command -v pamixer &>/dev/null; then
-    if [ true == $(pamixer --get-mute) ]; then
-        echo 0
-        exit
-    else
-        pamixer --get-volume
-    fi
-else
-    amixer -D pulse sget Master | awk -F '[^0-9]+' '/Left:/{print $3}'
-fi
+# Print initial volume, then re-print on any sink change
+pamixer --get-volume
+pactl subscribe | grep --line-buffered "sink" | while read -r _; do
+    pamixer --get-volume
+done

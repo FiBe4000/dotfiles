@@ -181,6 +181,10 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-right: 10px;
 }
 
+.volume-muted {
+  color: $red;
+}
+
 .battery {
   all: unset;
   color: $accent0;

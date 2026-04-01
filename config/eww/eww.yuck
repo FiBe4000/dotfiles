@@ -4,8 +4,8 @@
 ;)
 
 (defvar playeractive false)
-(defvar volumereveal false)
-(defpoll currentvolume :interval "1s" `scripts/getvol`)
+(deflisten currentvolume `scripts/getvol`)
+(deflisten volumemuted `scripts/getmute`)
 
 (defpoll playpause
   :interval "0.3s"
@@ -187,7 +187,7 @@
     :spacing 12
     :halign "center"
     :space-evenly false
-    (label :style "font-size: 20px;" :text "")
+    (label :style "font-size: 20px;" :text "")
     (label :text "${round(EWW_RAM.used_mem_perc, 0)}%")
   )
 )
@@ -223,20 +223,18 @@
     :space-evenly false
     :halign "center"
     (eventbox
-      :onhover "eww update volumereveal=true"
-      :onhoverlost "eww update volumereveal=false"
+      :onscroll "[ '{}' = 'up' ] && pamixer -i 5 || pamixer -d 5"
+      :onclick "pamixer -t"
       (box
         :orientation "h"
         :spacing 12
         :space-evenly false
         :halign "center"
-        (label :style "font-size: 22px;" :text "")
-        (label :text "${currentvolume}%")
-        (revealer
-          :reveal volumereveal
-          :transition "slideleft"
-          (label :text "${volumereveal}")
-        )
+        (label :style "font-size: 22px;" :text {volumemuted == "true" ? "󰖁"
+          : currentvolume != "" && currentvolume <= 15 ? "󰕿"
+          : currentvolume != "" && currentvolume <= 60 ? "󰖀"
+          : "󰕾"})
+        (label :class {volumemuted == "true" ? "volume-muted" : ""} :text {volumemuted == "true" ? "MUTED" : "${currentvolume}%"})
       )
     )
   )
