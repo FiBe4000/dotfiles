@@ -2,7 +2,7 @@
 
 :root {
   --cc-bg: alpha(@bg0, 0.85);
-  --noti-border-color: alpha(@bg3, 0.6);
+  --noti-border-color: @bg3;
   --noti-bg: @bg1;
   --noti-bg-darker: @bg0;
   --noti-bg-hover: @bg2;
@@ -15,8 +15,8 @@
   --notification-icon-size: 64px;
   --notification-app-icon-size: calc(var(--notification-icon-size) / 3);
   --notification-group-icon-size: 32px;
-  --border: 1px solid var(--noti-border-color);
-  --border-radius: 12px;
+  --border: 3px solid var(--noti-border-color);
+  --border-radius: 20px;
   --notification-shadow: 0 0 0 1px alpha(@bg0, 0.3),
     0 1px 3px 1px alpha(@bg0, 0.7), 0 2px 6px 2px alpha(@bg0, 0.3);
   --font-size-body: 15px;
@@ -26,7 +26,7 @@
 }
 
 @define-color cc-bg alpha(@bg0, 0.85);
-@define-color noti-border-color alpha(@bg3, 0.6);
+@define-color noti-border-color @bg3;
 @define-color noti-bg alpha(@bg1, 0.8);
 @define-color noti-bg-opaque @bg1;
 @define-color noti-bg-darker @bg0;
@@ -79,7 +79,7 @@ notificationwindow, blankwindow {
 
 .notification-row .notification-background .notification {
   border-radius: var(--border-radius);
-  border: var(--border);
+  border: 3px solid @bg3;
   padding: 0;
   transition: var(--hover-transition);
   background: @noti-bg;
@@ -102,8 +102,8 @@ notificationwindow, blankwindow {
 }
 
 .notification-row .notification-background .notification .notification-default-action:not(:only-child) {
-  border-bottom-left-radius: 0px;
-  border-bottom-right-radius: 0px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .notification-row .notification-background .notification .notification-default-action .notification-content {
@@ -219,6 +219,7 @@ notificationwindow, blankwindow {
 
 .notification-group:focus {
   background: var(--noti-bg-focus);
+  border-radius: var(--border-radius);
 }
 
 .notification-group .notification-group-close-button .close-button {
@@ -259,7 +260,11 @@ notificationwindow, blankwindow {
 .control-center {
   background: var(--cc-bg);
   color: var(--text-color);
+  border: 3px solid @bg3;
   border-radius: var(--border-radius);
+  margin-top: 12px;
+  margin-bottom: 24px;
+  margin-right: 24px;
 }
 
 .control-center .control-center-list-placeholder {
@@ -343,5 +348,5 @@ notificationwindow, blankwindow {
 }
 
 .notification-row .notification-background .notification.critical {
-  border: 1px solid @red;
+  border: 3px solid @red;
 }

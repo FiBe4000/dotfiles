@@ -66,11 +66,13 @@ $transparent-bg0: rgba($bg0, 0.5);
 
   .occupied {
     all: unset;
-    color: $accent3;
+    transition: color 0.3s, font-size 0.15s;
+    color: $accent2;
   }
 
   .empty {
     all: unset;
+    transition: color 0.3s, font-size 0.15s;
     color: $bg3;
   }
 
@@ -81,6 +83,12 @@ $transparent-bg0: rgba($bg0, 0.5);
     border-style: solid;
     border-width: 0px 0px 3px 0px;
     border-color: $fg2;
+  }
+
+  .workspace_eventbox:hover .workspace_entry {
+    transition: color 0.3s, font-size 0.15s;
+    color: $fg2;
+    font-size: 30px;
   }
 }
 
@@ -309,9 +317,9 @@ $transparent-bg0: rgba($bg0, 0.5);
   transition: background-color 0.2s ease-in-out, padding 0.2s ease-in-out;
 
   &:hover {
-    background-color: rgba($accent2, 0.7);
+    background-color: rgba($fg2, 0.7);
     padding: 5px 9px; /* visually enlarges the button */
-    box-shadow: 0 0 6px rgba($accent2, 0.7);
+    box-shadow: 0 0 6px rgba($fg2, 0.7);
   }
 
   &:active {

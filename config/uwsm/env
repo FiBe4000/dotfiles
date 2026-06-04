@@ -5,3 +5,9 @@ export XCURSOR_SIZE=16
 export QT_QPA_PLATFORM="wayland;xcb"
 export QT_QPA_PLATFORMTHEME=gtk3
 export QT_AUTO_SCREEN_SCALE_FACTOR=1
+
+# Electron apps (e.g. outlook-for-linux) default to XWayland, which gets
+# bitmap-upscaled on the fractional-scale (1.333x) laptop display -> blurry,
+# "choppy" fonts after undocking. 'auto' makes Electron use native Wayland when
+# available (proper per-monitor scaling), falling back to X11 otherwise.
+export ELECTRON_OZONE_PLATFORM_HINT=auto

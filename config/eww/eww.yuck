@@ -107,6 +107,7 @@
       (for workspace in workspaces
         (eventbox
           :onclick "hyprctl dispatch workspace ${workspace.id}"
+          :class "workspace_eventbox"
           (box
             :class "workspace_entry ${workspace.id == current_workspace ? "current" : ""} ${workspace.windows > 0 ? "occupied" : "empty"}"
             (label

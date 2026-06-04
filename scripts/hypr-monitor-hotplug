@@ -8,6 +8,7 @@
 SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 STATE_FILE="/tmp/hypr-laptop-display-forced"
 LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
+COUNT_FILE="/tmp/hypr-ext-monitor-count"
 
 count_external_monitors() {
     hyprctl monitors -j | jq '[.[] | select(.name != "eDP-1")] | length'
@@ -17,20 +18,38 @@ handle_monitors() {
     local external_count
     external_count=$(count_external_monitors)
 
+    # Always sync Xft.dpi so newly launched X11/XWayland apps render at the
+    # right size. With xwayland:force_zero_scaling=true, X11 apps render at
+    # native pixels and rely on Xft.dpi for sizing. Externals are scale 1.0
+    # (96 dpi); eDP-1 is scale 1.333 (96*1.333 = 128).
     if [[ "$external_count" -gt 0 ]]; then
-        # External monitors present — disable laptop display (unless manually forced on)
+        echo 'Xft.dpi: 96' | xrdb -merge 2>/dev/null
+    else
+        echo 'Xft.dpi: 128' | xrdb -merge 2>/dev/null
+    fi
+
+    # Skip the rest if count hasn't changed (avoids redundant hyprctl calls and bar restarts)
+    local last_count
+    last_count=$(cat "$COUNT_FILE" 2>/dev/null)
+    [[ "$external_count" == "$last_count" ]] && return
+    echo "$external_count" > "$COUNT_FILE"
+
+    if [[ "$external_count" -gt 0 ]]; then
         if [[ ! -f "$STATE_FILE" ]]; then
             hyprctl keyword monitor "eDP-1,disable"
         fi
         hyprctl keyword misc:vrr 0
     else
-        # No external monitors — enable laptop display (standalone: 120Hz, 140% scale, 10-bit, VRR)
         rm -f "$STATE_FILE"
         hyprctl keyword monitor "eDP-1,2880x1800@120,0x0,1.333333,bitdepth,10"
         hyprctl keyword misc:vrr 1
+        # Verify eDP-1 actually came up; fall back to full reload if not
+        sleep 1
+        if ! hyprctl monitors -j | jq -e '.[] | select(.name == "eDP-1")' > /dev/null 2>&1; then
+            hyprctl reload
+        fi
     fi
 
-    # Refresh eww bars
     [[ -x "$LAUNCH_BARS" ]] && "$LAUNCH_BARS"
 }
 
@@ -38,13 +57,22 @@ handle_monitors() {
 sleep 2
 handle_monitors
 
-# Listen for monitor events
-socat -u UNIX-CONNECT:"$SOCKET" - | while read -r line; do
-    case "$line" in
-        monitoraddedv2\>\>*|monitorremoved\>\>*)
-            # Small delay to let Hyprland finish processing
-            sleep 0.3
-            handle_monitors
-            ;;
-    esac
+# Background polling fallback — catches missed socket events (known reliability issue in 0.50+)
+while sleep 5; do
+    handle_monitors
+done &
+POLL_PID=$!
+trap 'kill "$POLL_PID" 2>/dev/null' EXIT
+
+# Listen for monitor events (fast path); reconnects if socket closes
+while true; do
+    socat -u UNIX-CONNECT:"$SOCKET" - 2>/dev/null | while IFS= read -r line; do
+        case "$line" in
+            monitoraddedv2\>\>*|monitorremoved\>\>*|monitoradded\>\>*)
+                sleep 1
+                handle_monitors
+                ;;
+        esac
+    done
+    sleep 1
 done
