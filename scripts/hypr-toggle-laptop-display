@@ -6,6 +6,9 @@
 STATE_FILE="/tmp/hypr-laptop-display-forced"
 LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
 
+# Per-machine eDP-1 profile (EDP_MODE, EDP_SCALE, EDP_EXTRA, EDP_DPI)
+source "$HOME/.dotfiles/scripts/hypr-display-profile.sh"
+
 # Check if eDP-1 is currently active (present in non-"all" monitor list)
 edp_active=$(hyprctl monitors -j | jq '[.[] | select(.name == "eDP-1")] | length')
 
@@ -15,8 +18,8 @@ if [[ "$edp_active" -gt 0 ]]; then
     rm -f "$STATE_FILE"
     notify-send "Laptop display" "Disabled"
 else
-    # Currently off — enable it below the left monitor (140% scale, 10-bit)
-    hyprctl keyword monitor "eDP-1,preferred,0x1440,1.333333,bitdepth,10"
+    # Currently off — enable it below the left monitor (per-machine scale)
+    hyprctl keyword monitor "eDP-1,preferred,0x1440,${EDP_SCALE}${EDP_EXTRA}"
     touch "$STATE_FILE"
     notify-send "Laptop display" "Enabled"
 fi

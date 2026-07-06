@@ -9,6 +9,7 @@ SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 STATE_FILE="/tmp/hypr-laptop-display-forced"
 LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
 COUNT_FILE="/tmp/hypr-ext-monitor-count"
+PROFILE="$HOME/.dotfiles/scripts/hypr-display-profile.sh"
 
 count_external_monitors() {
     hyprctl monitors -j | jq '[.[] | select(.name != "eDP-1")] | length'
@@ -18,14 +19,24 @@ handle_monitors() {
     local external_count
     external_count=$(count_external_monitors)
 
+    # Bail on a transient hyprctl failure (empty/garbage). An empty count would
+    # defeat the change-detection below (""!="0"), needlessly re-applying the
+    # monitor and relaunching the bars every poll — visible as periodic window
+    # "jumping".
+    [[ "$external_count" =~ ^[0-9]+$ ]] || return
+
+    # Re-source each call so the per-machine eDP-1 profile self-heals if the
+    # first detection raced Hyprland's startup (EDP_MODE/SCALE/EXTRA/DPI).
+    source "$PROFILE"
+
     # Always sync Xft.dpi so newly launched X11/XWayland apps render at the
     # right size. With xwayland:force_zero_scaling=true, X11 apps render at
     # native pixels and rely on Xft.dpi for sizing. Externals are scale 1.0
-    # (96 dpi); eDP-1 is scale 1.333 (96*1.333 = 128).
+    # (96 dpi); eDP-1 is scale-dependent (EDP_DPI == round(96 * scale)).
     if [[ "$external_count" -gt 0 ]]; then
         echo 'Xft.dpi: 96' | xrdb -merge 2>/dev/null
     else
-        echo 'Xft.dpi: 128' | xrdb -merge 2>/dev/null
+        echo "Xft.dpi: $EDP_DPI" | xrdb -merge 2>/dev/null
     fi
 
     # Skip the rest if count hasn't changed (avoids redundant hyprctl calls and bar restarts)
@@ -41,7 +52,7 @@ handle_monitors() {
         hyprctl keyword misc:vrr 0
     else
         rm -f "$STATE_FILE"
-        hyprctl keyword monitor "eDP-1,2880x1800@120,0x0,1.333333,bitdepth,10"
+        hyprctl keyword monitor "eDP-1,${EDP_MODE},0x0,${EDP_SCALE}${EDP_EXTRA}"
         hyprctl keyword misc:vrr 1
         # Verify eDP-1 actually came up; fall back to full reload if not
         sleep 1
