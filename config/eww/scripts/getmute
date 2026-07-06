@@ -1,7 +1,13 @@
 #!/bin/sh
 
-# Print initial mute state, then re-print on any sink change
-pamixer --get-mute
-pactl subscribe | grep --line-buffered "sink" | while read -r _; do
-    pamixer --get-mute
+# Print current mute state, then re-print on any sink change.
+# Wrapped in a retry loop: if `pactl subscribe` exits (e.g. audio server
+# not ready yet at login, or the connection drops), re-emit the current
+# value and re-subscribe instead of letting the deflisten die permanently.
+while true; do
+    pamixer --get-mute 2>/dev/null
+    pactl subscribe 2>/dev/null | grep --line-buffered "sink" | while read -r _; do
+        pamixer --get-mute 2>/dev/null
+    done
+    sleep 2
 done

@@ -12,6 +12,15 @@ else
   laptop=false
 fi
 
+# Symlink a directory, replacing any existing real dir/symlink at the target.
+# Plain `ln -sfn` on a directory target that already exists as a real dir drops
+# the link *inside* it instead of replacing it, silently deploying stale copies.
+# Remove the target first to guarantee a clean replacement.
+link_dir() {
+  sudo -u $user rm -rf "$2"
+  sudo -u $user ln -sfn "$1" "$2"
+}
+
 read -p "WARNING! This will overwrite any existing files in the locations. Continue? (y/N) " cont
 
 if [ "$laptop" = true ]; then
@@ -77,7 +86,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/eww/eww.yuck                            $home/.config/eww/eww.yuck
   sudo -u $user ln -sfn $dotfilespath/config/eww/eww.scss                            $home/.config/eww/eww.scss
   sudo -u $user ln -sfn $dotfilespath/config/eww/_colors.scss                        $home/.config/eww/_colors.scss
-  sudo -u $user ln -sfn $dotfilespath/config/eww/scripts                             $home/.config/eww/scripts
+  link_dir $dotfilespath/config/eww/scripts $home/.config/eww/scripts
   sudo -u $user mkdir -p $home/.config/swaync
   sudo -u $user ln -sfn $dotfilespath/config/swaync/config.json                      $home/.config/swaync/config.json
   sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css
