@@ -19,11 +19,12 @@ _edp_desc="$(hyprctl monitors all -j 2>/dev/null \
 
 case "$_edp_desc" in
     "AU Optronics 0x2036")
-        # Personal laptop — 2560x1440 panel, native (scale 1.0)
+        # Personal laptop — 2560x1440 panel, 1.066667x (2400x1350 logical,
+        # only blur-free step between native and 1.25)
         EDP_MODE="2560x1440@60"
-        EDP_SCALE="1.0"
+        EDP_SCALE="1.066667"
         EDP_EXTRA=""
-        EDP_DPI=96
+        EDP_DPI=102
         ;;
     *)
         # Work laptop (default / fallback) — 2880x1800 120Hz, 10-bit, 1.333x
