@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Apply a color scheme: regenerate all color configs, then live-reload each
+# running component. For manual/CLI palette switching.
+#
+# Usage: apply-theme [scheme]   (default scheme: nord, same as generate-colors)
+#
+# This is the canonical reload set for a palette change. The Settings4000 app
+# does NOT shell out to this script — it runs generate-colors and issues the
+# same reloads itself. Keep this list and the app's reload table in sync.
+#
+# Behaviour: exits non-zero only if color generation fails. Reloads for
+# components that are absent/stopped are skipped silently.
+
+set -euo pipefail
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+
+# 1. Regenerate color configs — the only step whose failure is fatal.
+"$DOTFILES/scripts/generate-colors" "$@"
+
+# 2. Live-reload each running component. Each reload is best-effort: skip if the
+#    component (or its control binary) is missing, and never fail the script.
+reload() {
+    "$@" >/dev/null 2>&1 || true
+}
+
+# Hyprland — reload compositor config (picks up config/hypr/colors.conf).
+if command -v hyprctl >/dev/null 2>&1 && pgrep -x Hyprland >/dev/null 2>&1; then
+    reload hyprctl reload
+fi
+
+# eww — reload the daemon (re-reads _colors.scss).
+if command -v eww >/dev/null 2>&1 && pgrep -x eww >/dev/null 2>&1; then
+    reload eww reload
+fi
+
+# swaync — reload styles and config.
+if command -v swaync-client >/dev/null 2>&1 && pgrep -x swaync >/dev/null 2>&1; then
+    reload swaync-client -rs
+fi
+
+# kitty — SIGUSR1 makes every instance re-read colors.conf.
+if command -v pkill >/dev/null 2>&1 && pgrep -x kitty >/dev/null 2>&1; then
+    reload pkill -USR1 -x kitty
+fi
+
+echo "Applied theme."
