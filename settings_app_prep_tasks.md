@@ -42,7 +42,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
 
 ## D. Palette & theme pipeline hygiene (recommended)
 
-- [ ] **D1. Document the palette schema in-repo** — Complexity: 1
+- [x] **D1. Document the palette schema in-repo** — Complexity: 1
   Add `colors/README.md` (or header comments in each scheme file) stating the fixed 17-key schema (`bg0–bg3 fg0–fg2 accent0–3 red orange yellow green blue purple`), bare-hex format, and that generated files must never be hand-edited.
   *Accept:* schema documented; matches what `generate-colors` validates.
 
