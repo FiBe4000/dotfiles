@@ -16,7 +16,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
 
 ## B. Consolidate duplicated values (required — writer desync hazards)
 
-- [ ] **B1. Single cursor source of truth** — Complexity: 2
+- [x] **B1. Single cursor source of truth** — Complexity: 2
   Resolve the conflict: `hyprland.conf` sets `XCURSOR_THEME=breeze_cursors`/24, `config/uwsm/env` sets `Nordic-cursors`/16. Pick one intended value, set it identically in both places (uwsm/env as canonical for the session env, hyprland.conf env matching), and comment each with a pointer to the other.
   *Accept:* both files declare the same theme+size; cursor renders consistently in Hyprland and XWayland apps after relogin.
 

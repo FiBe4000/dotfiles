@@ -1,5 +1,6 @@
 export GDK_BACKEND=wayland,x11
 #export GTK_THEME=Nordic-bluish-accent
+# Cursor theme/size: canonical value; keep in sync with config/hypr/hyprland.conf
 export XCURSOR_THEME=Nordic-cursors
 export XCURSOR_SIZE=16
 export QT_QPA_PLATFORM="wayland;xcb"
