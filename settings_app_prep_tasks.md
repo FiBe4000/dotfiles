@@ -50,7 +50,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   `generate-colors` already writes `# Generated from colors/<scheme> …` headers; optionally also write a stable, single-purpose state file containing just the scheme name so future detection needn't parse the header format. **Keep it out of `colors/`** — the app enumerates that directory to list selectable schemes (R3.2 / tasks.md 6.3), so a marker inside it could surface as a bogus scheme; put it in a sibling location the scheme scan never reads (e.g. a repo-level `state/active-scheme`). This is future-proofing: v1 detects the active scheme from the generated-file header (R3.2, architecture §5, tasks.md 3.7) and won't read this marker unless tasks.md 3.7 is updated to prefer it.
   *Accept:* the marker contains `everforest` after a regeneration; the header is still present; the app's scheme drop-down lists only real schemes.
 
-- [ ] **D3. Remove stale color artifacts** — Complexity: 1
+- [x] **D3. Remove stale color artifacts** — Complexity: 1
   Delete or move to `legacy/` the out-of-pipeline `config/kitty/nord.conf` and `config/polybar/colors` so theme discovery/scans never pick them up.
   *Accept:* no references to the removed files remain in active configs (`grep` clean).
 
