@@ -96,6 +96,9 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css
   sudo -u $user ln -sfn $dotfilespath/config/swaync/style.css                        $home/.config/swaync/style.css
   sudo -u $user ln -sfn $dotfilespath/config/uwsm/env                               $home/.config/uwsm/env
+  sudo -u $user mkdir -p $home/.config/gtk-3.0 $home/.config/gtk-4.0
+  sudo -u $user ln -sfn $dotfilespath/config/gtk-3.0/settings.ini                    $home/.config/gtk-3.0/settings.ini
+  sudo -u $user ln -sfn $dotfilespath/config/gtk-4.0/settings.ini                    $home/.config/gtk-4.0/settings.ini
   sudo -u $user ln -sfn $dotfilespath/config/xdg-desktop-portal/hyprland-portals.conf $home/.config/xdg-desktop-portal/hyprland-portals.conf
 
   # /etc/, general

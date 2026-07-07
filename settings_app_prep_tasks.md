@@ -60,6 +60,6 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   Extend the `colors/` + `generate-colors` pattern with a sibling `theme` kv file (UI font family/size) templated into kitty/eww/rofi/hyprlock, enabling a single "font" setting later. Out of app v1 scope; prep only if convenient.
   *Accept:* one kv edit + regenerate changes the font in kitty, eww, and rofi consistently.
 
-- [ ] **E2. GTK settings.ini bootstrap** — Complexity: 1
+- [x] **E2. GTK settings.ini bootstrap** — Complexity: 1
   Add minimal `~/.config/gtk-3.0/settings.ini` / `gtk-4.0/settings.ini` (via repo + symlink or setup.sh touch) so the app's INI writer edits an existing tracked file rather than creating untracked ones.
   *Accept:* both files exist with a `[Settings]` section and current theme values; `setup.sh` links them.
