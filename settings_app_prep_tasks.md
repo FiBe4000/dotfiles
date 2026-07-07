@@ -32,7 +32,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
 
 > Scope note: only the two hyprland.conf blocks the app actually writes are extracted — `input.conf` (C1) and the env line(s) (C2). The `appearance.conf` and `autostart.conf` splits also suggested in `dotfiles_analysis.md` §5.3 are intentionally omitted: the app edits neither window appearance nor autostart (out of v1 scope, requirements §9).
 
-- [ ] **C1. Extract `input.conf` from hyprland.conf** — Complexity: 2
+- [x] **C1. Extract `input.conf` from hyprland.conf** — Complexity: 2
   Move the `input { }` block (kb_layout, kb_options, sensitivity, touchpad) into `config/hypr/input.conf`, `source=`d from hyprland.conf — mirroring the existing `colors.conf`/`monitors.conf` pattern. The app then owns a small, comment-light file instead of editing the monolith.
   *Accept:* `hyprctl reload` picks up input changes from the new file; hyprland.conf no longer contains an `input { }` block; keyboard layout toggle and touchpad behavior unchanged after reload.
 
