@@ -36,7 +36,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   Move the `input { }` block (kb_layout, kb_options, sensitivity, touchpad) into `config/hypr/input.conf`, `source=`d from hyprland.conf — mirroring the existing `colors.conf`/`monitors.conf` pattern. The app then owns a small, comment-light file instead of editing the monolith.
   *Accept:* `hyprctl reload` picks up input changes from the new file; hyprland.conf no longer contains an `input { }` block; keyboard layout toggle and touchpad behavior unchanged after reload.
 
-- [ ] **C2. Consolidate hypr-side session env** — Complexity: 2
+- [x] **C2. Consolidate hypr-side session env** — Complexity: 2
   Move the **non-cursor** `env =` lines (Qt platform theme, Ozone hints) out of hyprland.conf into a dedicated `source=`d file, or drop them in favor of `config/uwsm/env` alone. **Cursor vars are exempt:** the app writes `XCURSOR_THEME`/`XCURSOR_SIZE` to *both* a hypr-side env line and `uwsm/env` and keeps them equal (R3.4, architecture §6, tasks.md 6.4), so B1's dual location for cursor stands. If you do relocate the hypr-side cursor env into a `source=`d file, that file must be added to the app's hyprlang parser target list (architecture §3 / tasks.md 3.2) and the cursor write in tasks.md 6.4 re-pointed at it — never remove the hypr-side cursor definition outright. Depends on B1.
   *Accept:* non-cursor session env lives in exactly one location; cursor env still present in both a hypr-side file and `uwsm/env` with identical values; session comes up with an identical environment.
 
