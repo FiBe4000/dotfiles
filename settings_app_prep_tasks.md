@@ -10,7 +10,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   Script that runs `generate-colors <scheme>` then reloads each *running* component: `hyprctl reload`, `eww reload`, `swaync-client -rs`, `kill -SIGUSR1 $(pidof kitty)`. Skips absent/stopped components silently; exits non-zero only on generation failure. This is for manual/CLI palette switching and documents the canonical reload set; the app does **not** shell out to it — it runs `generate-colors` and issues the same reloads itself (architecture §6, tasks.md 4.4–4.5), so keep this list and the app's reload table in sync.
   *Accept:* running it after editing `colors/<scheme>` restyles Hyprland, eww, swaync, and kitty without restarts; safe to run when e.g. eww isn't running.
 
-- [ ] **A2. Enable kitty remote control** — Complexity: 1
+- [x] **A2. Enable kitty remote control** — Complexity: 1
   Add `allow_remote_control socket-only` + `listen_on unix:@kitty-{kitty_pid}` to `kitty.conf` (the `{kitty_pid}` placeholder gives each instance its own socket) so colors can later be applied flicker-free via `kitten @ set-colors` instead of SIGUSR1. Forward-looking: v1 (and A1) keep using SIGUSR1; the socket only enables the switch later.
   *Accept:* `kitten @ --to unix:@kitty-$PID ls` works against a running kitty; SIGUSR1 path still works as fallback.
 
