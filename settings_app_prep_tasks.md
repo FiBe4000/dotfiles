@@ -24,7 +24,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   `hyprpaper.conf` points at `18.jpg`, `hyprlock.conf` hardcodes `17.png`. Decide policy (same image or intentionally distinct); if same, make hyprlock use the same path so the app can expose one "wallpaper" setting plus an optional lock override.
   *Accept:* documented single path (or documented intentional split); changing the wallpaper path in one place is reflected on the lock screen.
 
-- [ ] **B3. De-duplicate eDP-1 display profile logic** — Complexity: 3
+- [x] **B3. De-duplicate eDP-1 display profile logic** — Complexity: 3
   `monitors.conf` and `scripts/hypr-display-profile.sh` carry the same per-machine eDP-1 mode/scale values with a "keep in sync" comment. Derive one from the other: have the script read its `EDP_MODE`/`EDP_SCALE` values from `monitors.conf` (or generate the `monitors.conf` eDP rule from the script's table).
   *Accept:* the eDP mode/scale value exists in exactly one file; hotplug behavior unchanged.
 
