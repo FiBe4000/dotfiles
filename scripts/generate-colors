@@ -199,6 +199,67 @@ THEME_ACCENT2='#${colors[accent2]}'
 EOF
 echo "  Generated zsh/colors.zsh"
 
+# === Fonts =================================================================
+# Font families/sizes live in a sibling source file (theme/fonts), independent
+# of the color scheme, and are templated into per-target font partials that each
+# component includes the same way it includes its color partial.
+FONTS_SOURCE="$DOTFILES/theme/fonts"
+if [[ ! -f "$FONTS_SOURCE" ]]; then
+    echo "Error: Font source '$FONTS_SOURCE' not found" >&2
+    exit 1
+fi
+
+declare -A fonts
+while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+    fonts["$key"]="$value"
+done < "$FONTS_SOURCE"
+
+FONT_KEYS=(kitty_font eww_font rofi_font kitty_font_size eww_font_size rofi_font_size)
+for key in "${FONT_KEYS[@]}"; do
+    if [[ -z "${fonts[$key]+x}" ]]; then
+        echo "Error: Missing font key '$key' in $FONTS_SOURCE" >&2
+        exit 1
+    fi
+done
+
+# mono_font (optional) overrides every monospace target at once; blank/absent
+# falls back to each target's own family.
+mono="${fonts[mono_font]:-}"
+kitty_fam="${mono:-${fonts[kitty_font]}}"
+eww_fam="${mono:-${fonts[eww_font]}}"
+rofi_fam="${mono:-${fonts[rofi_font]}}"
+
+font_header="# Generated from theme/fonts — do not edit manually"
+
+# --- kitty (included from kitty.conf) ---
+cat > "$DOTFILES/config/kitty/fonts.conf" << EOF
+$font_header
+
+font_family ${kitty_fam}
+font_size ${fonts[kitty_font_size]}
+EOF
+echo "  Generated config/kitty/fonts.conf"
+
+# --- eww (SCSS partial @imported by eww.scss) ---
+cat > "$DOTFILES/config/eww/_fonts.scss" << EOF
+// $font_header
+
+\$mono-font: ${eww_fam};
+\$mono-font-size: ${fonts[eww_font_size]}px;
+EOF
+echo "  Generated config/eww/_fonts.scss"
+
+# --- rofi (rasi @imported by config.rasi) ---
+cat > "$DOTFILES/config/rofi/fonts.rasi" << EOF
+/* $font_header */
+
+configuration {
+    font: "${rofi_fam} ${fonts[rofi_font_size]}";
+}
+EOF
+echo "  Generated config/rofi/fonts.rasi"
+
 # --- active-scheme marker (single-purpose state, outside colors/) ---
 mkdir -p "$DOTFILES/state"
 printf '%s\n' "$SCHEME" > "$DOTFILES/state/active-scheme"

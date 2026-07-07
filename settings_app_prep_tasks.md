@@ -56,7 +56,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
 
 ## E. Optional / deferred (do not block the app)
 
-- [ ] **E1. Font kv-source + generator extension** — Complexity: 3
+- [x] **E1. Font kv-source + generator extension** — Complexity: 3
   Extend the `colors/` + `generate-colors` pattern with a sibling `theme` kv file (UI font family/size) templated into kitty/eww/rofi/hyprlock, enabling a single "font" setting later. Out of app v1 scope; prep only if convenient.
   *Accept:* one kv edit + regenerate changes the font in kitty, eww, and rofi consistently.
 

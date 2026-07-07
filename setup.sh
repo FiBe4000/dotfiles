@@ -65,6 +65,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/fontconfig/fonts.conf                   $home/.config/fontconfig/fonts.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/kitty.conf                        $home/.config/kitty/kitty.conf
   sudo -u $user ln -sfn $dotfilespath/config/kitty/colors.conf                       $home/.config/kitty/colors.conf
+  sudo -u $user ln -sfn $dotfilespath/config/kitty/fonts.conf                        $home/.config/kitty/fonts.conf
 #  sudo -u $user ln -sfn $dotfilespath/config/nvim/init.vim                           $home/.config/nvim/init.vim
   sudo -u $user ln -sfn $dotfilespath/config/nvim/init.lua                           $home/.config/nvim/init.lua
 #  sudo -u $user ln -sfn $dotfilespath/config/picom/picom.conf                        $home/.config/picom/picom.conf
@@ -74,6 +75,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
 # sudo -u $user ln -sfn $dotfilespath/config/polybar/modules                         $home/.config/polybar/modules
   sudo -u $user ln -sfn $dotfilespath/config/rofi/config.rasi                        $home/.config/rofi/config.rasi
   sudo -u $user ln -sfn $dotfilespath/config/rofi/colors.rasi                        $home/.config/rofi/colors.rasi
+  sudo -u $user ln -sfn $dotfilespath/config/rofi/fonts.rasi                         $home/.config/rofi/fonts.rasi
 #  sudo -u $user ln -sfn $dotfilespath/config/sxhkd/sxhkdrc                           $home/.config/sxhkd/sxhkdrc
   sudo -u $user ln -sfn $dotfilespath/config/zathura/zathurarc                       $home/.config/zathura/zathurarc
 
@@ -87,6 +89,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/eww/eww.yuck                            $home/.config/eww/eww.yuck
   sudo -u $user ln -sfn $dotfilespath/config/eww/eww.scss                            $home/.config/eww/eww.scss
   sudo -u $user ln -sfn $dotfilespath/config/eww/_colors.scss                        $home/.config/eww/_colors.scss
+  sudo -u $user ln -sfn $dotfilespath/config/eww/_fonts.scss                         $home/.config/eww/_fonts.scss
   link_dir $dotfilespath/config/eww/scripts $home/.config/eww/scripts
   sudo -u $user mkdir -p $home/.config/swaync
   sudo -u $user ln -sfn $dotfilespath/config/swaync/config.json                      $home/.config/swaync/config.json

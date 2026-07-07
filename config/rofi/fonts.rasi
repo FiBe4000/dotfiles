@@ -1,0 +1,5 @@
+/* # Generated from theme/fonts — do not edit manually */
+
+configuration {
+    font: "DejaVuSans Mono 20";
+}

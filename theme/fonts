@@ -1,0 +1,27 @@
+# Font settings for the theme pipeline.
+#
+# Read by scripts/generate-colors, which templates these into per-target
+# generated font partials (config/kitty/fonts.conf, config/eww/_fonts.scss,
+# config/rofi/fonts.rasi). See theme/README.md for the schema.
+#
+# Plain key=value lines; blank lines and lines starting with # are ignored.
+# Values are bare font-family names / sizes — never add quotes, units, or a
+# leading marker here; the generator adds whatever each target needs.
+
+# --- Monospace family (kitty, eww, rofi) ---
+# Single "font" knob: set mono_font to apply ONE family to all three targets at
+# once (this is what a future settings toggle drives). Leave it blank to fall
+# back to the per-target *_font values below, which preserve the historical
+# per-target fonts.
+mono_font=
+
+# Per-target monospace family fallbacks (used only when mono_font is blank).
+kitty_font=FiraCodeNFM-Med
+eww_font=DejaVuSansM Nerd Font Mono
+rofi_font=DejaVuSans Mono
+
+# Per-target font sizes. Kept independent because each target uses a different
+# unit scale (kitty points, eww pixels, rofi points).
+kitty_font_size=10
+eww_font_size=14
+rofi_font_size=20

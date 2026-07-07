@@ -1,4 +1,5 @@
 @import 'colors';
+@import 'fonts';
 
 // Functional
 $transparent: rgba(#000000, 0);
@@ -13,10 +14,10 @@ $transparent-bg0: rgba($bg0, 0.5);
   background-color: $transparent;
   color: $fg0;
   padding: 0px;
-  font-family: DejaVuSansM Nerd Font Mono;
+  font-family: $mono-font;
   font-style: normal;
   font-weight: bold;
-  font-size: 14px;
+  font-size: $mono-font-size;
   margin-top: 0px;
   margin-left: 12px;
   margin-right: 12px;
