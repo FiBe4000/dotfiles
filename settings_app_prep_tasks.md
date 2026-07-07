@@ -20,7 +20,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   Resolve the conflict: `hyprland.conf` sets `XCURSOR_THEME=breeze_cursors`/24, `config/uwsm/env` sets `Nordic-cursors`/16. Pick one intended value, set it identically in both places (uwsm/env as canonical for the session env, hyprland.conf env matching), and comment each with a pointer to the other.
   *Accept:* both files declare the same theme+size; cursor renders consistently in Hyprland and XWayland apps after relogin.
 
-- [ ] **B2. Unify wallpaper & lock-screen background** — Complexity: 2
+- [x] **B2. Unify wallpaper & lock-screen background** — Complexity: 2
   `hyprpaper.conf` points at `18.jpg`, `hyprlock.conf` hardcodes `17.png`. Decide policy (same image or intentionally distinct); if same, make hyprlock use the same path so the app can expose one "wallpaper" setting plus an optional lock override.
   *Accept:* documented single path (or documented intentional split); changing the wallpaper path in one place is reflected on the lock screen.
 
