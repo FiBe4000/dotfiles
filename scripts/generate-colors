@@ -199,4 +199,9 @@ THEME_ACCENT2='#${colors[accent2]}'
 EOF
 echo "  Generated zsh/colors.zsh"
 
+# --- active-scheme marker (single-purpose state, outside colors/) ---
+mkdir -p "$DOTFILES/state"
+printf '%s\n' "$SCHEME" > "$DOTFILES/state/active-scheme"
+echo "  Generated state/active-scheme"
+
 echo "Done! All color configs generated from colors/$SCHEME."

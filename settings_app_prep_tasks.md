@@ -46,7 +46,7 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
   Add `colors/README.md` (or header comments in each scheme file) stating the fixed 17-key schema (`bg0–bg3 fg0–fg2 accent0–3 red orange yellow green blue purple`), bare-hex format, and that generated files must never be hand-edited.
   *Accept:* schema documented; matches what `generate-colors` validates.
 
-- [ ] **D2. Machine-readable active-scheme marker (optional)** — Complexity: 1
+- [x] **D2. Machine-readable active-scheme marker (optional)** — Complexity: 1
   `generate-colors` already writes `# Generated from colors/<scheme> …` headers; optionally also write a stable, single-purpose state file containing just the scheme name so future detection needn't parse the header format. **Keep it out of `colors/`** — the app enumerates that directory to list selectable schemes (R3.2 / tasks.md 6.3), so a marker inside it could surface as a bogus scheme; put it in a sibling location the scheme scan never reads (e.g. a repo-level `state/active-scheme`). This is future-proofing: v1 detects the active scheme from the generated-file header (R3.2, architecture §5, tasks.md 3.7) and won't read this marker unless tasks.md 3.7 is updated to prefer it.
   *Accept:* the marker contains `everforest` after a regeneration; the header is still present; the app's scheme drop-down lists only real schemes.
 
