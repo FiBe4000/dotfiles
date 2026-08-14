@@ -60,6 +60,36 @@ $header
 EOF
 echo "  Generated config/hypr/colors.conf"
 
+# --- Hyprland Lua (module returning bare hex; hyprland.lua wraps as rgb()) ---
+# colors.conf above stays: hyprlock still sources it (hyprlock has no Lua config).
+cat > "$DOTFILES/config/hypr/colors.lua" << EOF
+-- $header
+
+return {
+    bg0 = "${colors[bg0]}",
+    bg1 = "${colors[bg1]}",
+    bg2 = "${colors[bg2]}",
+    bg3 = "${colors[bg3]}",
+
+    fg0 = "${colors[fg0]}",
+    fg1 = "${colors[fg1]}",
+    fg2 = "${colors[fg2]}",
+
+    accent0 = "${colors[accent0]}",
+    accent1 = "${colors[accent1]}",
+    accent2 = "${colors[accent2]}",
+    accent3 = "${colors[accent3]}",
+
+    red = "${colors[red]}",
+    orange = "${colors[orange]}",
+    yellow = "${colors[yellow]}",
+    green = "${colors[green]}",
+    blue = "${colors[blue]}",
+    purple = "${colors[purple]}",
+}
+EOF
+echo "  Generated config/hypr/colors.lua"
+
 # --- eww (SCSS variables) ---
 cat > "$DOTFILES/config/eww/_colors.scss" << EOF
 // $header
