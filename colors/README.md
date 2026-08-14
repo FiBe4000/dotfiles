@@ -38,7 +38,8 @@ eww/swaync/rofi/kitty/zsh), so the `#` must **not** be present in the source.
 Running `generate-colors <scheme>` overwrites these outputs, each carrying a header
 `Generated from colors/<scheme> — do not edit manually`:
 
-- `config/hypr/colors.conf` (hyprlang `$var = rgb(...)`)
+- `config/hypr/colors.conf` (hyprlang `$var = rgb(...)`; kept for hyprlock, which stays hyprlang)
+- `config/hypr/colors.lua` (Lua module returning bare-hex strings; `dofile`d by hyprland.lua)
 - `config/eww/_colors.scss` (SCSS `$var`)
 - `config/swaync/colors.css` (GTK CSS `@define-color`)
 - `config/rofi/colors.rasi` (rasi vars)

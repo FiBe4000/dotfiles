@@ -35,10 +35,23 @@ Complexity: 1 = simple/repetitive … 5 = highly complex.
 - [x] **C1. Extract `input.conf` from hyprland.conf** — Complexity: 2
   Move the `input { }` block (kb_layout, kb_options, sensitivity, touchpad) into `config/hypr/input.conf`, `source=`d from hyprland.conf — mirroring the existing `colors.conf`/`monitors.conf` pattern. The app then owns a small, comment-light file instead of editing the monolith.
   *Accept:* `hyprctl reload` picks up input changes from the new file; hyprland.conf no longer contains an `input { }` block; keyboard layout toggle and touchpad behavior unchanged after reload.
+  > **2026-08 Lua migration note:** the app-owned file is now `config/hypr/input.lua` — a flat
+  > `hl.config({ input = { ... } })` Lua table `dofile`d by hyprland.lua (Hyprland deprecated
+  > hyprlang in 0.55). The app must write Lua table syntax here (snake_case keys, e.g.
+  > `tap_to_click`), not hyprlang kv. `input.conf` remains only as part of the frozen hyprlang
+  > fallback and is deleted after soak. hyprlock/hypridle/hyprpaper files stay hyprlang, so the
+  > app's hyprlang parser is still needed for those; its *hyprland-side* target list is obsolete.
+  > Runtime pokes also change on Lua sessions: `hyprctl keyword` → `hyprctl eval 'hl.config({...})'`
+  > and `hyprctl dispatch <old syntax>` → `hyprctl dispatch 'hl.dsp....'` (see the dual-mode
+  > helpers in scripts/hypr-monitor-hotplug and config/eww for the transition pattern).
 
 - [x] **C2. Consolidate hypr-side session env** — Complexity: 2
   Move the **non-cursor** `env =` lines (Qt platform theme, Ozone hints) out of hyprland.conf into a dedicated `source=`d file, or drop them in favor of `config/uwsm/env` alone. **Cursor vars are exempt:** the app writes `XCURSOR_THEME`/`XCURSOR_SIZE` to *both* a hypr-side env line and `uwsm/env` and keeps them equal (R3.4, architecture §6, tasks.md 6.4), so B1's dual location for cursor stands. If you do relocate the hypr-side cursor env into a `source=`d file, that file must be added to the app's hyprlang parser target list (architecture §3 / tasks.md 3.2) and the cursor write in tasks.md 6.4 re-pointed at it — never remove the hypr-side cursor definition outright. Depends on B1.
   *Accept:* non-cursor session env lives in exactly one location; cursor env still present in both a hypr-side file and `uwsm/env` with identical values; session comes up with an identical environment.
+  > **2026-08 Lua migration note:** the hypr-side cursor env is now two `hl.env("XCURSOR_THEME", ...)`
+  > calls in `config/hypr/hyprland.lua` (ENV section) — there is no hyprlang env file to add to a
+  > parser target list. The app's cursor write (tasks.md 6.4) must target those Lua lines (or a
+  > small `dofile`d Lua env file split out for it) plus `uwsm/env` as before.
 
 ## D. Palette & theme pipeline hygiene (recommended)
 
