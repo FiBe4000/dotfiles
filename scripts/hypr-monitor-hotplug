@@ -15,6 +15,19 @@ count_external_monitors() {
     hyprctl monitors -j | jq '[.[] | select(.name != "eDP-1")] | length'
 }
 
+# Apply a runtime config change on either config flavor: `hyprctl keyword`
+# works on hyprlang sessions but is rejected by Lua-config sessions (0.55+),
+# which want `hyprctl eval` instead. Both print "ok" on success.
+# Usage: hypr_set <legacy keyword args...> -- <lua code>
+hypr_set() {
+    local legacy=()
+    while [[ $# -gt 0 && "$1" != "--" ]]; do legacy+=("$1"); shift; done
+    shift
+    local out
+    out=$(hyprctl keyword "${legacy[@]}" 2>&1)
+    [[ "$out" == "ok" ]] || hyprctl eval "$1" > /dev/null
+}
+
 handle_monitors() {
     local external_count
     external_count=$(count_external_monitors)
@@ -47,13 +60,14 @@ handle_monitors() {
 
     if [[ "$external_count" -gt 0 ]]; then
         if [[ ! -f "$STATE_FILE" ]]; then
-            hyprctl keyword monitor "eDP-1,disable"
+            hypr_set monitor "eDP-1,disable" -- 'hl.monitor({ output = "eDP-1", disabled = true })'
         fi
-        hyprctl keyword misc:vrr 0
+        hypr_set misc:vrr 0 -- 'hl.config({ misc = { vrr = 0 } })'
     else
         rm -f "$STATE_FILE"
-        hyprctl keyword monitor "eDP-1,${EDP_MODE},0x0,${EDP_SCALE}${EDP_EXTRA}"
-        hyprctl keyword misc:vrr 1
+        hypr_set monitor "eDP-1,${EDP_MODE},0x0,${EDP_SCALE}${EDP_EXTRA}" -- \
+            "hl.monitor({ output = \"eDP-1\", mode = \"${EDP_MODE}\", position = \"0x0\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA} })"
+        hypr_set misc:vrr 1 -- 'hl.config({ misc = { vrr = 1 } })'
         # Verify eDP-1 actually came up; fall back to full reload if not
         sleep 1
         if ! hyprctl monitors -j | jq -e '.[] | select(.name == "eDP-1")' > /dev/null 2>&1; then

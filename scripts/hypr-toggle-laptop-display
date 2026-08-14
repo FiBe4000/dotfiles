@@ -9,17 +9,31 @@ LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
 # Per-machine eDP-1 profile (EDP_MODE, EDP_SCALE, EDP_EXTRA, EDP_DPI)
 source "$HOME/.dotfiles/scripts/hypr-display-profile.sh"
 
+# Apply a runtime config change on either config flavor: `hyprctl keyword`
+# works on hyprlang sessions but is rejected by Lua-config sessions (0.55+),
+# which want `hyprctl eval` instead. Both print "ok" on success.
+# Usage: hypr_set <legacy keyword args...> -- <lua code>
+hypr_set() {
+    local legacy=()
+    while [[ $# -gt 0 && "$1" != "--" ]]; do legacy+=("$1"); shift; done
+    shift
+    local out
+    out=$(hyprctl keyword "${legacy[@]}" 2>&1)
+    [[ "$out" == "ok" ]] || hyprctl eval "$1" > /dev/null
+}
+
 # Check if eDP-1 is currently active (present in non-"all" monitor list)
 edp_active=$(hyprctl monitors -j | jq '[.[] | select(.name == "eDP-1")] | length')
 
 if [[ "$edp_active" -gt 0 ]]; then
     # Currently on — disable it
-    hyprctl keyword monitor "eDP-1,disable"
+    hypr_set monitor "eDP-1,disable" -- 'hl.monitor({ output = "eDP-1", disabled = true })'
     rm -f "$STATE_FILE"
     notify-send "Laptop display" "Disabled"
 else
     # Currently off — enable it below the left monitor (per-machine scale)
-    hyprctl keyword monitor "eDP-1,preferred,0x1440,${EDP_SCALE}${EDP_EXTRA}"
+    hypr_set monitor "eDP-1,preferred,0x1440,${EDP_SCALE}${EDP_EXTRA}" -- \
+        "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x1440\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA} })"
     touch "$STATE_FILE"
     notify-send "Laptop display" "Enabled"
 fi

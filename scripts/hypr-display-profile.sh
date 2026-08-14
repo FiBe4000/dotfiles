@@ -15,6 +15,7 @@
 #   EDP_MODE      mode string for `monitor=eDP-1,<MODE>,...`
 #   EDP_SCALE     scale factor
 #   EDP_EXTRA     trailing keyword args (e.g. ",bitdepth,10"), may be empty
+#   EDP_LUA_EXTRA same pairs as Lua table fields (e.g. ', bitdepth = 10'), may be empty
 #   EDP_DPI       Xft.dpi to use when undocked (== round(96 * scale))
 # (Docked Xft.dpi is always 96 since external monitors are scale 1.0.)
 
@@ -59,6 +60,19 @@ if [[ -n "$_edp_rule" ]]; then
     EDP_SCALE="${EDP_SCALE//[[:space:]]/}"
     _extra="${_extra//[[:space:]]/}"
     if [[ -n "$_extra" ]]; then EDP_EXTRA=",$_extra"; else EDP_EXTRA=""; fi
+    # Same trailing pairs as Lua table fields (e.g. ', bitdepth = 10') for
+    # `hyprctl eval 'hl.monitor({...})'` on Lua-config sessions (Hyprland 0.55+).
+    EDP_LUA_EXTRA=""
+    if [[ -n "$_extra" ]]; then
+        IFS=',' read -ra _kv <<< "$_extra"
+        for ((_i = 0; _i + 1 < ${#_kv[@]}; _i += 2)); do
+            if [[ "${_kv[_i+1]}" =~ ^[0-9.]+$ ]]; then
+                EDP_LUA_EXTRA+=", ${_kv[_i]} = ${_kv[_i+1]}"
+            else
+                EDP_LUA_EXTRA+=", ${_kv[_i]} = \"${_kv[_i+1]}\""
+            fi
+        done
+    fi
     # Xft.dpi tracks the scale: round(96 * scale).
     EDP_DPI="$(awk -v s="$EDP_SCALE" 'BEGIN { printf "%.0f", 96 * s }')"
 else
@@ -67,5 +81,6 @@ else
     EDP_MODE="preferred"
     EDP_SCALE="1"
     EDP_EXTRA=""
+    EDP_LUA_EXTRA=""
     EDP_DPI=96
 fi

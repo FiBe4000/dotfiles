@@ -7,16 +7,23 @@ function clamp {
 	python -c "print(max($min, min($val, $max)))"
 }
 
+# Legacy dispatch syntax fails (nonzero) on Lua-config sessions (Hyprland
+# 0.55+); fall back to the Lua dispatcher form there.
+function focus_workspace {
+	hyprctl dispatch workspace "$1" >/dev/null 2>&1 \
+		|| hyprctl dispatch "hl.dsp.focus({ workspace = $1 })"
+}
+
 direction=$1
 current=$2
 if test "$direction" = "down"
 then
 	target=$(clamp 1 10 $(($current+1)))
 	echo "jumping to $target"
-	hyprctl dispatch workspace $target
+	focus_workspace $target
 elif test "$direction" = "up"
 then
 	target=$(clamp 1 10 $(($current-1)))
 	echo "jumping to $target"
-	hyprctl dispatch workspace $target
+	focus_workspace $target
 fi

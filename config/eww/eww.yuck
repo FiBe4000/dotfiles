@@ -88,7 +88,7 @@
     :class "power"
     :orientation "h"
     :space-evenly false
-    (button :class "power_button" :onclick "hyprctl dispatch workspace 1" "")
+    (button :class "power_button" :onclick "hyprctl dispatch workspace 1 || hyprctl dispatch 'hl.dsp.focus({ workspace = 1 })'" "")
   )
 )
 
@@ -106,7 +106,7 @@
         :visible false)
       (for workspace in workspaces
         (eventbox
-          :onclick "hyprctl dispatch workspace ${workspace.id}"
+          :onclick "hyprctl dispatch workspace ${workspace.id} || hyprctl dispatch 'hl.dsp.focus({ workspace = ${workspace.id} })'"
           :class "workspace_eventbox"
           (box
             :class "workspace_entry ${workspace.id == current_workspace ? "current" : ""} ${workspace.windows > 0 ? "occupied" : "empty"}"
