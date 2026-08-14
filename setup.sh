@@ -80,9 +80,12 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/zathura/zathurarc                       $home/.config/zathura/zathurarc
 
   sudo -u $user ln -sfn $dotfilespath/config/hypr/colors.conf                        $home/.config/hypr/colors.conf
+  sudo -u $user ln -sfn $dotfilespath/config/hypr/colors.lua                         $home/.config/hypr/colors.lua
   sudo -u $user ln -sfn $dotfilespath/config/hypr/input.conf                         $home/.config/hypr/input.conf
+  sudo -u $user ln -sfn $dotfilespath/config/hypr/input.lua                          $home/.config/hypr/input.lua
   sudo -u $user ln -sfn $dotfilespath/config/hypr/hypridle.conf                      $home/.config/hypr/hypridle.conf
   sudo -u $user ln -sfn $dotfilespath/config/hypr/hyprland.conf                      $home/.config/hypr/hyprland.conf
+  sudo -u $user ln -sfn $dotfilespath/config/hypr/hyprland.lua                       $home/.config/hypr/hyprland.lua
   sudo -u $user ln -sfn $dotfilespath/config/hypr/hyprlock.conf                      $home/.config/hypr/hyprlock.conf
   sudo -u $user ln -sfn $dotfilespath/config/hypr/hyprpaper.conf                     $home/.config/hypr/hyprpaper.conf
   sudo -u $user ln -sfn $dotfilespath/config/hypr/monitors.conf                      $home/.config/hypr/monitors.conf
