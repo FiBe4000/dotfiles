@@ -11,8 +11,15 @@ LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
 COUNT_FILE="/tmp/hypr-ext-monitor-count"
 PROFILE="$HOME/.dotfiles/scripts/hypr-display-profile.sh"
 
+# Excludes virtual outputs: on 0.56+, when the last real monitor disappears
+# (undock with eDP-1 disabled), Hyprland enters unsafe state and lists a
+# "FALLBACK" output — counting it as external kept this stuck at 1 and the
+# re-enable branch never fired. HEADLESS-* covers `hyprctl output create`.
 count_external_monitors() {
-    hyprctl monitors -j | jq '[.[] | select(.name != "eDP-1")] | length'
+    hyprctl monitors -j | jq '[.[] | select(
+        .name != "eDP-1" and .name != "FALLBACK"
+        and (.name | startswith("HEADLESS-") | not)
+    )] | length'
 }
 
 # Apply a runtime config change on either config flavor: `hyprctl keyword`

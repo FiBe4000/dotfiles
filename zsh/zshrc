@@ -136,8 +136,8 @@ source ~/.zsh_local_additions
 # Command aliases
 alias grep="grep --color=auto"
 alias dmesg="dmesg --color=always"
-alias ls='eza --git --icons --classify=automatic'
-alias la='eza -lahg --git --icons --classify=automatic'
+alias ls='eza --git --icons --classify=auto'
+alias la='eza -lahg --git --icons --classify=auto'
 alias ll='eza -lhg --git --icons'
 alias lt='eza -T --icons'
 alias ytop='ytop -p -s'
