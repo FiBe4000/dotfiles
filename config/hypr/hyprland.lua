@@ -172,7 +172,7 @@ local dsp = hl.dsp
 hl.bind("SUPER + SHIFT + Q", dsp.exit())
 hl.bind("SUPER + CTRL + SHIFT + Q", dsp.exec_cmd("poweroff"))
 hl.bind("SUPER + CTRL + SHIFT + R", dsp.exec_cmd("reboot"))
-hl.bind("CTRL + ALT + L", dsp.exec_cmd("hyprlock"))
+hl.bind("CTRL + ALT + L", dsp.exec_cmd("hyprlock")) -- no --grace: deliberate locks require the password immediately
 
 -- Programs
 hl.bind("SUPER + SHIFT + RETURN", dsp.exec_cmd("kitty"))

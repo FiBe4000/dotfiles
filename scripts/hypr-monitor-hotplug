@@ -85,6 +85,16 @@ handle_monitors() {
     [[ -x "$LAUNCH_BARS" ]] && "$LAUNCH_BARS"
 }
 
+# Session leftovers: exec'd daemons survive logout, and the /tmp state files
+# persist across relogin (tmpfs clears on reboot only). A stale count file
+# matching the current external count made handle_monitors return early on
+# docked login, so the config-enabled eDP-1 was never disabled. Kill old
+# instances first so their poll loop can't rewrite the files we clear.
+for pid in $(pgrep -f "bash.*hypr-monitor-hotplug"); do
+    [[ "$pid" == "$$" ]] || kill "$pid" 2>/dev/null
+done
+rm -f "$COUNT_FILE" "$STATE_FILE"
+
 # Handle initial state on startup (small delay to let monitors settle)
 sleep 2
 handle_monitors
