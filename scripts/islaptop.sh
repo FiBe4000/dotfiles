@@ -9,6 +9,6 @@ if [ "$laptop" = true ]; then
     #xmodmap ~/.dotfiles/other/escremap
     #autorandr --skip-options gamma --change
     #xcalib -o eDP-1 ~/.dotfiles/other/B140QAN02_0.icm
-    #xbacklight -ctrl tpacpi::kbd_backlight -set 100
+    #brightnessctl -q -d tpacpi::kbd_backlight set 100%
     #libinput-gestures-setup start
 fi
