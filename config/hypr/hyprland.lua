@@ -212,13 +212,15 @@ for i = 1, 10 do
 end
 
 -- Brightness. brightnessctl talks to /sys/class/backlight directly (via logind),
--- so no X server and no video-group membership needed. -n 5% keeps the coarse
--- 10% steps from ever landing on a fully black panel.
+-- so no X server and no video-group membership needed. -n5% keeps the coarse
+-- 10% steps from ever landing on a fully black panel. The value must be glued
+-- to -n (-n5%, not -n 5%): the flag takes an optional argument, so a detached
+-- value is parsed as the command and brightnessctl silently prints info instead.
 -- repeating+locked: keys repeat when held and still work on the lock screen.
 local BRIGHT_OPTS = { repeating = true, locked = true }
-hl.bind("XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n 5% set 10%-"), BRIGHT_OPTS)
+hl.bind("XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n5% set 10%-"), BRIGHT_OPTS)
 hl.bind("XF86MonBrightnessUp",   dsp.exec_cmd("brightnessctl -q set 10%+"), BRIGHT_OPTS)
-hl.bind("SHIFT + XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n 5% set 5%-"), BRIGHT_OPTS)
+hl.bind("SHIFT + XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n5% set 5%-"), BRIGHT_OPTS)
 hl.bind("SHIFT + XF86MonBrightnessUp",   dsp.exec_cmd("brightnessctl -q set 5%+"), BRIGHT_OPTS)
 
 -- Audio
