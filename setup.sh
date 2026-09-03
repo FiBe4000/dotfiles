@@ -106,6 +106,9 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
 
   # /etc/, general
 #  ln -sfn $dotfilespath/etc/pacman.conf                                              /etc/pacman.conf
+  # PAM stack is copied, not symlinked: an auth config must not be writable from $HOME.
+  # Stops hyprlock --grace unlocks from counting as pam_faillock failures.
+#  install -m 644 -o root -g root $dotfilespath/etc/pam.d/hyprlock                    /etc/pam.d/hyprlock
 
   # Local in home, general
 #  sudo -u $user ln -sfn $dotfilespath/local/applications/delugeserver.desktop        $home/.local/share/applications/delugeserver.desktop

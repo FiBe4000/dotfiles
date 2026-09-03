@@ -1,0 +1,22 @@
+# PAM configuration file for hyprlock
+#
+# Replaces the stock `auth include login`. hyprlock opens the PAM conversation
+# as soon as the lock screen appears; unlocking inside --grace aborts that
+# conversation ("conversation failed" / "could not identify password" in the
+# journal). libpam's pam_get_authtok maps that abort to PAM_AUTHTOK_ERR (not
+# PAM_CONV_ERR — verified in Linux-PAM 1.7.2) and pam_unix returns it as-is.
+# In system-auth that falls through to `pam_faillock.so authfail` and is
+# counted as a wrong password, so three grace unlocks within 10 minutes locked
+# the account (faillock deny=3, unlock_time=600; seen 2026-09-03 10:31).
+#
+# Same modules as system-auth, but an aborted conversation ends the stack
+# before faillock can record it. A real wrong password returns PAM_AUTH_ERR,
+# hits default=bad, and is still counted and enforced.
+#
+# Install as a copy, not a symlink: a PAM file must not be writable from $HOME.
+#   sudo install -m 644 -o root -g root ~/.dotfiles/etc/pam.d/hyprlock /etc/pam.d/hyprlock
+
+auth       required                                              pam_faillock.so  preauth
+auth       [success=1 authtok_err=die conv_err=die default=bad]  pam_unix.so      try_first_pass nullok
+auth       [default=die]                                         pam_faillock.so  authfail
+auth       required                                              pam_faillock.so  authsucc
