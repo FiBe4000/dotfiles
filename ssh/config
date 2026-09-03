@@ -1,0 +1,29 @@
+# Deployed to ~/.ssh/config by setup.sh.
+#
+# Host-specific entries deliberately live in ~/.ssh/config.d/*.conf, which is
+# NOT tracked in this repo: hostnames, IPs and even key filenames are
+# work/customer-internal and this repo has a public remote. See ssh/README.md.
+#
+# ssh uses the FIRST obtained value for each keyword (ssh_config(5)), so
+# specific blocks must come first and general defaults last. Note that an
+# Include does NOT reset the active Host/Match context -- if an included file
+# ends inside a "Host x" block, a bare keyword placed after the Include would
+# still belong to that block. Only Host/Match lines may follow it.
+Include ~/.ssh/config.d/*.conf
+
+Host *
+    # Add a key to the agent the first time it is actually read from disk, so an
+    # encrypted key costs at most one passphrase per agent lifetime. The agent is
+    # openssh's socket-activated systemd user unit; SSH_AUTH_SOCK comes from
+    # config/environment.d/10-ssh-agent.conf (and zsh/zprofile for TTY logins).
+    # Passphrase prompts are routed to ksshaskpass by 20-ssh-askpass.conf.
+    #
+    # Not "confirm" (would prompt on every single use) and not "ask" (would
+    # prompt before adding).
+    AddKeysToAgent yes
+
+    # IdentitiesOnly is deliberately NOT set globally -- it would stop ad-hoc
+    # hosts from using a key that is already in the agent. Set it per host in
+    # ~/.ssh/config.d/ together with that host's single IdentityFile.
+    ServerAliveInterval 60
+    ServerAliveCountMax 3

@@ -58,7 +58,6 @@ gettext
 gimp
 git
 glibc
-gnome-keyring
 graphviz
 grep
 groff
@@ -80,6 +79,10 @@ keepassxc
 kitty
 kodi-gbm
 kodi-wayland
+ksshaskpass
+kwallet
+kwallet-pam
+kwalletmanager
 less
 lib32-vulkan-mesa-layers
 libreoffice-fresh

@@ -243,7 +243,6 @@ hl.bind("XF86AudioMute",        dsp.exec_cmd("pactl set-sink-mute @DEFAULT_SINK@
 if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
     hl.on("hyprland.start", function()
         -- hl.exec_cmd(home .. "/.dotfiles/scripts/launchportals.sh")
-        hl.exec_cmd(home .. "/.dotfiles/scripts/islaptop.sh")
         hl.exec_cmd("uwsm app -- hyprpaper")
         hl.exec_cmd("uwsm app -- swaync")
         hl.exec_cmd("uwsm app -- nm-applet")

@@ -99,6 +99,13 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css
   sudo -u $user ln -sfn $dotfilespath/config/swaync/style.css                        $home/.config/swaync/style.css
   sudo -u $user ln -sfn $dotfilespath/config/uwsm/env                               $home/.config/uwsm/env
+
+  # environment.d: read by the systemd user manager, so under uwsm these reach
+  # the compositor and everything it spawns. Not TTY logins -- zprofile covers
+  # SSH_AUTH_SOCK there, and the askpass vars are meant to stay GUI-only.
+  sudo -u $user mkdir -p $home/.config/environment.d
+  sudo -u $user ln -sfn $dotfilespath/config/environment.d/10-ssh-agent.conf         $home/.config/environment.d/10-ssh-agent.conf
+  sudo -u $user ln -sfn $dotfilespath/config/environment.d/20-ssh-askpass.conf       $home/.config/environment.d/20-ssh-askpass.conf
   sudo -u $user mkdir -p $home/.config/gtk-3.0 $home/.config/gtk-4.0
   sudo -u $user ln -sfn $dotfilespath/config/gtk-3.0/settings.ini                    $home/.config/gtk-3.0/settings.ini
   sudo -u $user ln -sfn $dotfilespath/config/gtk-4.0/settings.ini                    $home/.config/gtk-4.0/settings.ini
@@ -125,7 +132,25 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/zsh/zshrc                                      $home/.zshrc
   sudo -u $user ln -sfn $dotfilespath/zsh/colors.zsh                                 $home/.zsh_colors
 
-  echo "done."
+  # SSH, general. config.d/ holds the work/customer host blocks and is
+  # intentionally NOT in this repo -- only create it. Never link_dir anything
+  # under ~/.ssh: link_dir rm -rf's its target.
+  sudo -u $user mkdir -p $home/.ssh/config.d
+  sudo -u $user chmod 700 $home/.ssh $home/.ssh/config.d
+  sudo -u $user ln -sfn $dotfilespath/ssh/config                                     $home/.ssh/config
+
+  # systemd user units, general. ssh-agent.socket is openssh's socket-activated
+  # agent. plasma-kwallet-pam.service pushes the login-session environment into
+  # the ksecretd that pam_kwallet5 started, unlocking kdewallet with the login
+  # password -- Plasma pulls the same unit from plasma-workspace.target, so
+  # wanting it from graphical-session.target makes it run under Hyprland/uwsm
+  # too without double-starting it in Plasma (same unit, one job).
+  sudo -u $user mkdir -p $home/.config/systemd/user/sockets.target.wants
+  sudo -u $user mkdir -p $home/.config/systemd/user/graphical-session.target.wants
+  sudo -u $user ln -sfn /usr/lib/systemd/user/ssh-agent.socket                       $home/.config/systemd/user/sockets.target.wants/ssh-agent.socket
+  sudo -u $user ln -sfn /usr/lib/systemd/user/plasma-kwallet-pam.service             $home/.config/systemd/user/graphical-session.target.wants/plasma-kwallet-pam.service
+
+  echo "done. Unit symlinks changed; run 'systemctl --user daemon-reload' or re-login."
 else
   echo "No changes made to config files."
 fi
