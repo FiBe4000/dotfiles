@@ -1,0 +1,47 @@
+#!/bin/sh
+# kded-gtkconfig on|off -- toggle kded6's "gtkconfig" module (kde-gtk-config).
+#
+# The module makes GTK apps follow Plasma's System Settings: it rewrites
+# ~/.config/gtk-{3,4}.0/settings.ini + gtk.css/colors.css from kdeglobals and
+# starts xsettingsd to publish the same values over XSETTINGS.
+#
+# Under Hyprland that is destructive: kdeglobals has no theme set, so it pushes
+# Breeze icons and a stale DPI into the dotfiles-linked settings.ini, and the
+# XSETTINGS DPI rescales XWayland apps (Outlook) away from the Xft.dpi that
+# hypr-monitor-hotplug maintains. kded6 is D-Bus activated on demand (Dolphin,
+# KWallet, ...), so it strikes at a random point in the session.
+#
+# kded6rc is shared by both sessions, so each session sets it on startup:
+#   Hyprland: hyprland.lua autostart runs `off`
+#   Plasma:   config/autostart/kded-gtkconfig-enable.desktop runs `on`
+set -u
+
+KDED_DEST=org.kde.kded6
+KDED_PATH=/kded
+KDED_IFACE=org.kde.kded6
+
+kded_running() {
+    busctl --user --no-pager list 2>/dev/null | grep -q "^$KDED_DEST "
+}
+
+case "${1:-}" in
+    off)
+        kwriteconfig6 --file kded6rc --group Module-gtkconfig --key autoload false
+        if kded_running; then
+            qdbus6 "$KDED_DEST" "$KDED_PATH" "$KDED_IFACE.unloadModule" gtkconfig >/dev/null 2>&1 || true
+        fi
+        # xsettingsd is spawned by the module and keeps the XSETTINGS selection
+        # (and its DPI) alive after unload. Nothing else in the Hyprland session uses it.
+        pkill -x xsettingsd 2>/dev/null || true
+        ;;
+    on)
+        kwriteconfig6 --file kded6rc --group Module-gtkconfig --key autoload true
+        if kded_running; then
+            qdbus6 "$KDED_DEST" "$KDED_PATH" "$KDED_IFACE.loadModule" gtkconfig >/dev/null 2>&1 || true
+        fi
+        ;;
+    *)
+        echo "usage: $(basename "$0") on|off" >&2
+        exit 2
+        ;;
+esac

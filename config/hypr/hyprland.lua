@@ -242,6 +242,10 @@ hl.bind("XF86AudioMute",        dsp.exec_cmd("pactl set-sink-mute @DEFAULT_SINK@
 -- clobber the live session's eww bars.
 if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
     hl.on("hyprland.start", function()
+        -- Keep kded6's gtkconfig module off in this session: it rewrites the
+        -- dotfiles-linked GTK settings.ini from kdeglobals and rescales XWayland
+        -- apps via xsettingsd. Plasma turns it back on via config/autostart.
+        hl.exec_cmd(home .. "/.dotfiles/scripts/kded-gtkconfig off")
         -- hl.exec_cmd(home .. "/.dotfiles/scripts/launchportals.sh")
         hl.exec_cmd("uwsm app -- hyprpaper")
         hl.exec_cmd("uwsm app -- swaync")
