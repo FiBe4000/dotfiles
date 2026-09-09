@@ -1,0 +1,58 @@
+;; Volume/brightness/keyboard-layout OSD popup. Driven entirely by scripts/osd,
+;; which sets the vars, opens the window on the focused monitor and closes it
+;; after a timeout. Fade/blur come from the Hyprland layer rule matching
+;; :namespace "eww-osd".
+;;
+;; State classes live on the leaf widgets and kind-dependent parts toggle with
+;; :visible -- a class present on the parent box at window creation is never
+;; removed by eww, so class toggles on the container are unreliable.
+
+(defvar osd_kind "volume")   ; "volume" | "brightness" | "layout"
+(defvar osd_level 0)         ; 0-100 (unused for layout)
+(defvar osd_muted false)
+(defvar osd_text "")         ; layout name, e.g. "English (US)"
+
+(defwindow osd
+  :monitor 0                 ; overridden per call with `eww open osd --screen N`
+  :namespace "eww-osd"
+  :stacking "overlay"
+  :focusable false
+  :exclusive false
+  :geometry (geometry
+              :anchor "bottom center"
+              :y "20%"
+              :width "360px")
+  (osd)
+)
+
+(defwidget osd []
+  (box
+    :class "osd ${osd_kind}"
+    :orientation "h"
+    :space-evenly false
+    :spacing 16
+    :valign "center"
+    (label
+      :class "osd_icon ${osd_muted ? "muted" : "unmuted"}"
+      :text {osd_kind == "layout" ? "󰌌"
+             : osd_kind == "brightness"
+               ? (osd_level <= 33 ? "󰃞" : osd_level <= 66 ? "󰃟" : "󰃠")
+               : osd_muted ? "󰖁"
+                 : osd_level <= 15 ? "󰕿"
+                   : osd_level <= 60 ? "󰖀"
+                     : "󰕾"})
+    (progress
+      :class "osd_bar ${osd_muted ? "muted" : "unmuted"}"
+      :visible {osd_kind != "layout"}
+      :value osd_level
+      :orientation "h"
+      :hexpand true
+      :valign "center")
+    (label
+      :class "osd_text"
+      :visible {osd_kind == "layout"}
+      :text osd_text
+      :hexpand true
+      :halign "start")
+  )
+)

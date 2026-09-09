@@ -21,6 +21,8 @@
 
 (deflisten current_workspace :initial "1" "bash ~/.config/eww/scripts/get-active-workspace")
 
+(include "widgets/osd.yuck")
+
 (defwindow bar
   :exclusive true
   :windowtype "dock"
@@ -224,8 +226,9 @@
     :space-evenly false
     :halign "center"
     (eventbox
-      :onscroll "[ '{}' = 'up' ] && pamixer -i 5 || pamixer -d 5"
-      :onclick "pamixer -t"
+      :timeout "2s" ; osd script does several IPC round-trips; default 200ms only logs warnings
+      :onscroll "~/.config/eww/scripts/osd volume {} 5"
+      :onclick "~/.config/eww/scripts/osd volume mute"
       (box
         :orientation "h"
         :spacing 12

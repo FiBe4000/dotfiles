@@ -7,8 +7,10 @@
 # Eww uses monitor indices (not Hyprland connector names) for --screen.
 # We map from hyprctl monitor data to eww indices.
 
-# Close all existing bar instances
-for id in $(eww list-windows | grep '^*bar-' | sed 's/^\*//'); do
+# Close all existing bar instances. `eww active-windows` prints "<id>: <name>"
+# per open instance (`list-windows` only lists definitions, so stale
+# bar-<monitor> ids from a previous dock state never matched before).
+for id in $(eww active-windows 2>/dev/null | sed -n 's/^\(bar-[^:]*\):.*/\1/p'); do
     eww close "$id" 2>/dev/null
 done
 

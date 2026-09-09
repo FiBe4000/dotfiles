@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Show the keyboard-layout OSD on every xkb group switch.
+# Layout switching is not a Hyprland bind (input.lua: grp:win_space_toggle),
+# so the only hook is Hyprland's socket2 `activelayout>>DEVICE,NAME` event.
+# Started from hyprland.lua autostart; socket2 sends no initial state, so
+# nothing pops up at login.
+#
+# Hyprland emits one event per keyboard device whose layout changed and does
+# not sync layouts across devices: a key press on the laptop keyboard names
+# at-translated-set-2-keyboard even when the USB keyboard is `main`. So the
+# device is ignored and bursts (`hyprctl switchxkblayout all ...`, 13 events)
+# are collapsed by debouncing on the same name within 300 ms.
+
+set -u
+
+if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    echo "osd-layout-listener: HYPRLAND_INSTANCE_SIGNATURE not set (not inside a Hyprland session)" >&2
+    exit 1
+fi
+
+osd="$(dirname "$(readlink -f "$0")")/osd"
+sock="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+DEBOUNCE_MS=300
+
+last_name=""
+last_ms=0
+
+# Retry loop, like getvol: if socat drops (socket briefly unavailable) resume
+# listening instead of dying for the rest of the session. If Hyprland itself is
+# gone the session is over anyway.
+while :; do
+    socat -u UNIX-CONNECT:"$sock" - 2>/dev/null | while IFS= read -r line; do
+        [[ $line == activelayout\>\>* ]] || continue
+        name=${line#*,}            # everything after the first comma: the layout name
+        now=$(date +%s%3N)
+        if [[ $name == "$last_name" ]] && (( now - last_ms < DEBOUNCE_MS )); then
+            continue
+        fi
+        last_name=$name
+        last_ms=$now
+        "$osd" layout "$name"
+    done
+    sleep 1
+done

@@ -130,6 +130,12 @@ hl.animation({ leaf = "windows",    enabled = true, speed = 3,  bezier = "defaul
 hl.animation({ leaf = "border",     enabled = true, speed = 10, bezier = "default" })
 hl.animation({ leaf = "fadeIn",     enabled = true, speed = 10, bezier = "default" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 1,  bezier = "default" })
+-- Layer-shell fades (eww OSD, and any layer rule using animation = "fade"):
+-- quick in, slightly slower out so the volume/brightness popup feels snappy.
+-- The "fade" style animates alpha only, and alpha is driven by fadeLayersIn/Out
+-- (layersIn/Out govern the slide/popin position+size). 1 speed unit = 100 ms.
+hl.animation({ leaf = "fadeLayersIn",  enabled = true, speed = 2, bezier = "default" })
+hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "default" })
 
 ---------------
 ---- RULES ----
@@ -147,7 +153,7 @@ hl.layer_rule({
     match = { namespace = "rofi" },
     blur = true,
     ignore_alpha = 0.3,
-    animation = "fadeIn",
+    animation = "fade", -- layer styles are slide/popin/fade; "fadeIn" was silently ignored
 })
 hl.layer_rule({
     name  = "swaync-notification",
@@ -160,6 +166,15 @@ hl.layer_rule({
     match = { namespace = "swaync-control-center" },
     blur = true,
     ignore_alpha = 0.3,
+})
+-- Volume/brightness OSD (config/eww/widgets/osd.yuck). Same blurred, translucent
+-- look as the notifications; "fade" animates both map and unmap.
+hl.layer_rule({
+    name  = "eww-osd",
+    match = { namespace = "eww-osd" },
+    blur = true,
+    ignore_alpha = 0.3,
+    animation = "fade",
 })
 
 ---------------
@@ -211,22 +226,23 @@ for i = 1, 10 do
     hl.bind("SUPER + SHIFT + " .. key, dsp.window.move({ workspace = i, follow = false }))
 end
 
--- Brightness. brightnessctl talks to /sys/class/backlight directly (via logind),
--- so no X server and no video-group membership needed. -n5% keeps the coarse
--- 10% steps from ever landing on a fully black panel. The value must be glued
--- to -n (-n5%, not -n 5%): the flag takes an optional argument, so a detached
--- value is parsed as the command and brightnessctl silently prints info instead.
+-- Brightness and volume go through the eww OSD script, which applies the change
+-- (brightnessctl / pamixer) and pops the on-screen indicator. brightnessctl talks
+-- to /sys/class/backlight directly (via logind), so no X server and no video-group
+-- membership needed; the script keeps a 5% floor so the coarse 10% steps never
+-- land on a fully black panel, and is a no-op on machines without a backlight.
 -- repeating+locked: keys repeat when held and still work on the lock screen.
+local OSD = home .. "/.config/eww/scripts/osd"
 local BRIGHT_OPTS = { repeating = true, locked = true }
-hl.bind("XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n5% set 10%-"), BRIGHT_OPTS)
-hl.bind("XF86MonBrightnessUp",   dsp.exec_cmd("brightnessctl -q set 10%+"), BRIGHT_OPTS)
-hl.bind("SHIFT + XF86MonBrightnessDown", dsp.exec_cmd("brightnessctl -q -n5% set 5%-"), BRIGHT_OPTS)
-hl.bind("SHIFT + XF86MonBrightnessUp",   dsp.exec_cmd("brightnessctl -q set 5%+"), BRIGHT_OPTS)
+hl.bind("XF86MonBrightnessDown", dsp.exec_cmd(OSD .. " brightness down 10"), BRIGHT_OPTS)
+hl.bind("XF86MonBrightnessUp",   dsp.exec_cmd(OSD .. " brightness up 10"), BRIGHT_OPTS)
+hl.bind("SHIFT + XF86MonBrightnessDown", dsp.exec_cmd(OSD .. " brightness down 5"), BRIGHT_OPTS)
+hl.bind("SHIFT + XF86MonBrightnessUp",   dsp.exec_cmd(OSD .. " brightness up 5"), BRIGHT_OPTS)
 
--- Audio
-hl.bind("XF86AudioLowerVolume", dsp.exec_cmd("pactl set-sink-volume @DEFAULT_SINK@ -5%"))
-hl.bind("XF86AudioRaiseVolume", dsp.exec_cmd("pactl set-sink-volume @DEFAULT_SINK@ +5%"))
-hl.bind("XF86AudioMute",        dsp.exec_cmd("pactl set-sink-mute @DEFAULT_SINK@ toggle"))
+-- Audio (pamixer via the OSD script caps volume at 100%, unlike pactl +N%)
+hl.bind("XF86AudioLowerVolume", dsp.exec_cmd(OSD .. " volume down 5"))
+hl.bind("XF86AudioRaiseVolume", dsp.exec_cmd(OSD .. " volume up 5"))
+hl.bind("XF86AudioMute",        dsp.exec_cmd(OSD .. " volume mute"))
 
 -- Lid switch (disabled, kept from the hyprlang config)
 -- hl.bind("switch:Lid Switch", dsp.exec_cmd("hyprlock"), { locked = true })
@@ -258,5 +274,9 @@ if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
         hl.exec_cmd("uwsm app -- hypridle")
         hl.exec_cmd(home .. "/.dotfiles/scripts/hypr-monitor-hotplug")
         hl.exec_cmd(home .. "/.dotfiles/scripts/launch-eww-bars")
+        -- Keyboard-layout OSD. SUPER+SPACE is the xkb grp:win_space_toggle option
+        -- (see input.lua), not a bind, so the only hook is Hyprland's activelayout
+        -- event on socket2; this listener turns it into `osd layout <name>`.
+        hl.exec_cmd(home .. "/.config/eww/scripts/osd-layout-listener")
     end)
 end

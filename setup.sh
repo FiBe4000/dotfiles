@@ -94,6 +94,8 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/eww/_colors.scss                        $home/.config/eww/_colors.scss
   sudo -u $user ln -sfn $dotfilespath/config/eww/_fonts.scss                         $home/.config/eww/_fonts.scss
   link_dir $dotfilespath/config/eww/scripts $home/.config/eww/scripts
+  link_dir $dotfilespath/config/eww/widgets $home/.config/eww/widgets
+  link_dir $dotfilespath/config/eww/styles  $home/.config/eww/styles
   sudo -u $user mkdir -p $home/.config/swaync
   sudo -u $user ln -sfn $dotfilespath/config/swaync/config.json                      $home/.config/swaync/config.json
   sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css

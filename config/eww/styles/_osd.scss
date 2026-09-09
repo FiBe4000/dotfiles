@@ -1,0 +1,50 @@
+// Volume/brightness/keyboard-layout OSD popup (widgets/osd.yuck).
+// Mirrors the swaync notification look: 20px radius, 3px $bg3 border,
+// translucent $bg1 that the Hyprland layer rule blurs.
+
+.osd {
+  background-color: rgba($bg1, 0.8);
+  border-style: solid;
+  border-width: 3px;
+  border-color: $bg3;
+  border-radius: 20px;
+  padding: 14px 24px;
+  color: $fg0;
+  font-family: $mono-font;
+}
+
+.osd_icon {
+  font-size: 28px;
+  min-width: 36px; // fixed slot so the track doesn't shift between glyphs
+  color: $fg0;
+}
+
+// Thin track spanning the full range (foreground)...
+.osd_bar trough {
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: rgba($fg0, 0.45);
+  margin: 6px 0; // room for the thicker fill to overhang
+}
+
+// ...with a thicker fill centred on it via negative vertical margins.
+.osd_bar trough progress {
+  min-height: 12px;
+  margin: -4px 0;
+  border-radius: 6px;
+  background-color: $accent2;
+}
+
+// Layout name shown instead of the bar (kind == "layout").
+.osd_text {
+  font-size: 20px;
+  color: $fg0;
+}
+
+.osd_icon.muted {
+  color: $red; // matches the bar's .volume-muted
+}
+
+.osd_bar.muted trough progress {
+  background-color: $bg3; // keep the level visible, but dimmed
+}

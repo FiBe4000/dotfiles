@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+
+# Volume/brightness/keyboard-layout OSD: apply the change (if any), push the
+# new state into eww, show the `osd` window and keep it up until OSD_TIMEOUT_MS
+# of inactivity.
+#   osd volume up|down|mute [step]
+#   osd brightness up|down [step]
+#   osd layout <name>            # display only; called by osd-layout-listener
+#
+# Volume/brightness are keybind-driven on purpose (no pactl/udev listener):
+# hypridle dims the backlight on idle and pipewire emits sink events on stream
+# start/stop, so an event-driven OSD would pop up for changes the user never
+# made. Layout has no bind (xkb grp toggle), so it is fed by the socket2 event.
+#
+# Vars are updated before the window opens so it never renders stale values.
+# An already-open window is only updated, never reopened -- `eww open` on an
+# open instance recreates the surface (flicker, replayed fade-in).
+# The hide timer is a deadline file plus one flock-guarded sleeper loop: every
+# call just pushes the deadline forward, so held keys (~30 events/s) never
+# race a kill/respawn or leak background sleeps.
+
+set -u
+
+OSD_TIMEOUT_MS=${OSD_TIMEOUT_MS:-3000}   # single tunable: hide after this much inactivity
+
+kind=${1:-}
+action=${2:-}
+step=${3:-5}
+muted=false
+text=""      # only used by the layout kind
+
+case "$kind" in
+    volume)
+        # pamixer caps at 100% (pactl would keep boosting past it).
+        case "$action" in
+            up)   pamixer -i "$step" ;;
+            down) pamixer -d "$step" ;;
+            mute) pamixer -t ;;
+            *)    echo "usage: osd volume up|down|mute [step]" >&2; exit 2 ;;
+        esac
+        level=$(pamixer --get-volume)
+        muted=$(pamixer --get-mute)
+        ;;
+    brightness)
+        # Desktop has no backlight: silently do nothing so the binds stay harmless.
+        [ -n "$(ls /sys/class/backlight 2>/dev/null)" ] || exit 0
+        # -n5% floor keeps the panel from going fully black (glued to -n, see hyprland.lua).
+        case "$action" in
+            up)   brightnessctl -q set "${step}%+" ;;
+            down) brightnessctl -q -n5% set "${step}%-" ;;
+            *)    echo "usage: osd brightness up|down [step]" >&2; exit 2 ;;
+        esac
+        # -m: device,class,current,percent,max
+        level=$(brightnessctl -m | cut -d, -f4 | tr -d %)
+        ;;
+    layout)
+        # Nothing to switch here: xkb already did. Just show Hyprland's layout name.
+        text=$action
+        [ -n "$text" ] || { echo "usage: osd layout <name>" >&2; exit 2; }
+        level=0
+        ;;
+    *)
+        echo "usage: osd volume|brightness|layout ..." >&2
+        exit 2
+        ;;
+esac
+
+# The change itself is done. From here on only the popup is at stake, so any
+# failure just skips it: a non-numeric level (pamixer/brightnessctl failed, e.g.
+# pipewire restarting) would break the yuck expressions, and a missing or wedged
+# eww daemon must not be started by a volume key (`eww open` auto-daemonises;
+# a wedged daemon returns rc 0 with empty output, so check the value).
+[[ $level =~ ^[0-9]+$ ]] || exit 0
+[ "$(eww ping 2>/dev/null)" = pong ] || exit 0
+
+focused_idx() {
+    # eww --screen takes a monitor index; hyprctl order matches GDK order
+    # (same assumption as launch-eww-bars). `// 0` covers "no monitor focused".
+    hyprctl monitors -j | jq -r 'map(.focused) | index(true) // 0'
+}
+
+rt=${XDG_RUNTIME_DIR:-/tmp}
+deadline="$rt/eww-osd.deadline"
+
+read_deadline() {
+    local d
+    d=$(cat "$deadline" 2>/dev/null)
+    [[ $d =~ ^[0-9]+$ ]] || d=0
+    echo "$d"
+}
+
+eww update osd_kind="$kind" osd_level="$level" osd_muted="$muted" osd_text="$text"
+
+# Atomic rename: a plain `echo >` truncates first, and a hider poll landing in
+# that gap would read "" and fall through to `eww close`.
+printf '%s\n' $(( $(date +%s%3N) + OSD_TIMEOUT_MS )) > "$deadline.tmp" && mv -f "$deadline.tmp" "$deadline"
+
+# Serialise the check-then-open: two rapid first presses would both see "not
+# open" and the second `eww open` would recreate the surface.
+(
+    flock -w 1 8 || exit 0
+    if ! eww active-windows | grep -q '^osd:'; then
+        eww open osd --screen "$(focused_idx)"
+    fi
+) 8>"$rt/eww-osd.open.lock"
+
+# Only one hider loop at a time; later calls just move the deadline.
+(
+    flock -n 9 || exit 0
+    while :; do
+        while [ "$(date +%s%3N)" -lt "$(read_deadline)" ]; do
+            sleep 0.1
+        done
+        eww close osd
+        # A press that landed between the last poll and the close saw the
+        # window open (so it didn't reopen) and couldn't take this lock. Its
+        # deadline is now in the future: reopen for it and keep waiting.
+        [ "$(date +%s%3N)" -lt "$(read_deadline)" ] || break
+        eww open osd --screen "$(focused_idx)"
+    done
+) 9>"$rt/eww-osd.lock" >/dev/null 2>&1 &
