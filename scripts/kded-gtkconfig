@@ -11,10 +11,16 @@
 # hypr-monitor-hotplug maintains. kded6 is D-Bus activated on demand (Dolphin,
 # KWallet, ...), so it strikes at a random point in the session.
 #
-# kded6rc is shared by both sessions, so each session sets it on startup:
+# The rc file is shared by both sessions, so each session sets it on startup:
 #   Hyprland: hyprland.lua autostart runs `off`
 #   Plasma:   config/autostart/kded-gtkconfig-enable.desktop runs `on`
+#
+# NOTE: kded6 (KF 6.29) still hardcodes KSharedConfig::openConfig("kded5rc") for
+# the Module-* autoload groups; ~/.config/kded6rc is NOT read for this. Verify
+# with: qdbus6 org.kde.kded6 /kded org.kde.kded6.isModuleAutoloaded gtkconfig
 set -u
+
+RC=kded5rc
 
 KDED_DEST=org.kde.kded6
 KDED_PATH=/kded
@@ -26,7 +32,7 @@ kded_running() {
 
 case "${1:-}" in
     off)
-        kwriteconfig6 --file kded6rc --group Module-gtkconfig --key autoload false
+        kwriteconfig6 --file "$RC" --group Module-gtkconfig --key autoload false
         if kded_running; then
             qdbus6 "$KDED_DEST" "$KDED_PATH" "$KDED_IFACE.unloadModule" gtkconfig >/dev/null 2>&1 || true
         fi
@@ -35,7 +41,7 @@ case "${1:-}" in
         pkill -x xsettingsd 2>/dev/null || true
         ;;
     on)
-        kwriteconfig6 --file kded6rc --group Module-gtkconfig --key autoload true
+        kwriteconfig6 --file "$RC" --group Module-gtkconfig --key autoload true
         if kded_running; then
             qdbus6 "$KDED_DEST" "$KDED_PATH" "$KDED_IFACE.loadModule" gtkconfig >/dev/null 2>&1 || true
         fi

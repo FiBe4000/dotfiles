@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=Re-enable kded6 gtkconfig
-Comment=Hyprland disables kded6's GTK sync module in the shared kded6rc; turn it back on for Plasma
-# Desktop Exec does not expand ~ or $HOME, so go via sh. "\\$" is the spec's
-# escaping for a literal $ inside a quoted argument.
-Exec=sh -c "\\$HOME/.dotfiles/scripts/kded-gtkconfig on"
+Comment=Hyprland disables kded6's GTK sync module in the shared kded rc; turn it back on for Plasma
+# Desktop Exec does not expand ~ or $HOME itself, so go via sh. Plain ~ avoids
+# escape sequences that systemd's xdg-autostart-generator mis-parses.
+Exec=sh -c "~/.dotfiles/scripts/kded-gtkconfig on"
 OnlyShowIn=KDE;
 NoDisplay=true
 X-KDE-autostart-phase=1
