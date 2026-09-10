@@ -1,14 +1,23 @@
 // Volume/brightness/keyboard-layout OSD popup (widgets/osd.yuck).
 // Mirrors the swaync notification look: 20px radius, 3px $bg3 border,
-// translucent $bg1 that the Hyprland layer rule blurs.
+// translucent $bg1 that the Hyprland layer rule blurs. Drop shadow from
+// styles/_shadows.scss; the 32px margin keeps it inside the layer surface.
 
+// eww adds the window name ("osd") as a class on the toplevel; keep that
+// transparent so only the inner box paints, and the box's margin stays clear.
 .osd {
+  background-color: $transparent;
+}
+
+.osd_box {
   background-color: rgba($bg1, 0.8);
   border-style: solid;
   border-width: 3px;
   border-color: $bg3;
   border-radius: 20px;
   padding: 14px 24px;
+  margin: 32px; // transparent room for the shadow (see _shadows.scss); window :width grows to match
+  box-shadow: $shadow-osd;
   color: $fg0;
   font-family: $mono-font;
 }

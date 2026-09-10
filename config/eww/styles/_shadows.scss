@@ -1,0 +1,13 @@
+// Drop-shadow recipes shared by the bar and the OSD. Light source is the top,
+// slightly top-left, so shadows fall down and a bit right (matches
+// decoration.shadow.offset in hyprland.lua). Each recipe is two layers: a tight
+// ambient contact shadow plus a wider, offset key shadow for a soft falloff.
+//
+// GTK3 blur is NOT CSS-spec: it treats the blur value as the Gaussian sigma
+// (CSS uses sigma = blur/2), so a shadow only fades out fully ~2.5x the blur
+// value away from its edge. Shadows are clipped at the layer surface, so
+// offset + 2.5 * blur must fit the transparent room: the bar has a 12px strip
+// below and beside its modules (.bar margins), the OSD a 32px margin (_osd.scss).
+// A visible tail at the surface edge shows up as a hard line on the wallpaper.
+$shadow-bar: 0 1px 1px rgba($shadow, 0.30), 1px 2px 4px rgba($shadow, 0.28);  // 2 + 2.5*4 = 12px
+$shadow-osd: 0 1px 2px rgba($shadow, 0.30), 2px 6px 10px rgba($shadow, 0.28); // 6 + 2.5*10 = 31px <= 32

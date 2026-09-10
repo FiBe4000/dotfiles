@@ -21,7 +21,7 @@ while IFS='=' read -r key value; do
     colors["$key"]="$value"
 done < "$SOURCE"
 
-NAMES=(bg0 bg1 bg2 bg3 fg0 fg1 fg2 accent0 accent1 accent2 accent3 red orange yellow green blue purple)
+NAMES=(bg0 bg1 bg2 bg3 fg0 fg1 fg2 accent0 accent1 accent2 accent3 red orange yellow green blue purple shadow)
 
 # Verify all expected colors are present
 for name in "${NAMES[@]}"; do
@@ -57,6 +57,8 @@ $header
 \$green = rgb(${colors[green]})
 \$blue = rgb(${colors[blue]})
 \$purple = rgb(${colors[purple]})
+
+\$shadow = rgb(${colors[shadow]})
 EOF
 echo "  Generated config/hypr/colors.conf"
 
@@ -86,6 +88,8 @@ return {
     green = "${colors[green]}",
     blue = "${colors[blue]}",
     purple = "${colors[purple]}",
+
+    shadow = "${colors[shadow]}",
 }
 EOF
 echo "  Generated config/hypr/colors.lua"
@@ -114,6 +118,8 @@ cat > "$DOTFILES/config/eww/_colors.scss" << EOF
 \$green: #${colors[green]};
 \$blue: #${colors[blue]};
 \$purple: #${colors[purple]};
+
+\$shadow: #${colors[shadow]};
 EOF
 echo "  Generated config/eww/_colors.scss"
 
@@ -142,6 +148,8 @@ cat > "$DOTFILES/config/swaync/colors.css" << EOF
 @define-color green #${colors[green]};
 @define-color blue #${colors[blue]};
 @define-color purple #${colors[purple]};
+
+@define-color shadow #${colors[shadow]};
 EOF
 echo "  Generated config/swaync/colors.css"
 
@@ -170,6 +178,8 @@ cat > "$DOTFILES/config/rofi/colors.rasi" << EOF
     green: #${colors[green]};
     blue: #${colors[blue]};
     purple: #${colors[purple]};
+
+    shadow: #${colors[shadow]};
 
     bg0-overlay: #${colors[bg0]}66;
 }

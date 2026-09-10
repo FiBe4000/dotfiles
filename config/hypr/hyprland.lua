@@ -78,6 +78,7 @@ hl.env("XCURSOR_SIZE", "24")
 -- package.loaded cache.
 local c = dofile(confdir .. "colors.lua")
 local function rgb(hex) return "rgb(" .. hex .. ")" end
+local function rgba(hex, alpha) return "rgba(" .. hex .. alpha .. ")" end -- alpha: 2 hex digits
 
 hl.config({
     cursor = {
@@ -103,6 +104,23 @@ hl.config({
             size = 3,
             passes = 3,
             new_optimizations = true,
+        },
+        -- Soft drop shadow for depth. Shadows are on by default (range 4, which
+        -- reads flat); this widens them. range = spread in px, render_power =
+        -- falloff exponent (low = soft and airy, high = tight hug of the edge).
+        -- 20px shows in the 12px outer gaps without smearing the inner gaps into
+        -- grey. Geometry follows `rounding`, so corners match automatically.
+        -- Layer surfaces (eww, swaync) get no compositor shadow; they draw their
+        -- own in GTK CSS from the same $shadow palette color.
+        shadow = {
+            enabled        = true,
+            range          = 20,
+            render_power   = 2,
+            sharp          = false,
+            scale          = 1.0,
+            offset         = { 2, 6 },                -- light from top, slightly top-left: shadow falls down and a bit right
+            color          = rgba(c.shadow, "b3"),    -- focused: raised
+            color_inactive = rgba(c.shadow, "59"),    -- unfocused: flatter (depth cue instead of dim_inactive)
         },
     },
 
@@ -141,11 +159,13 @@ hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "defa
 ---- RULES ----
 ---------------
 
--- XWayland popups/menus surface with empty class and title — don't blur them.
+-- XWayland popups/menus surface with empty class and title — don't blur or
+-- shadow them (they are transient menus, not windows).
 hl.window_rule({
-    name  = "xwayland-popup-no-blur",
+    name  = "xwayland-popup-undecorated",
     match = { class = "^()$", title = "^()$" },
     no_blur = true,
+    no_shadow = true,
 })
 
 hl.layer_rule({
@@ -159,13 +179,13 @@ hl.layer_rule({
     name  = "swaync-notification",
     match = { namespace = "swaync-notification-window" },
     blur = true,
-    ignore_alpha = 0.3,
+    ignore_alpha = 0.55, -- panels are 0.8-0.85 alpha; their CSS shadows peak ~0.5 and stay unblurred
 })
 hl.layer_rule({
     name  = "swaync-control-center",
     match = { namespace = "swaync-control-center" },
     blur = true,
-    ignore_alpha = 0.3,
+    ignore_alpha = 0.55, -- panels are 0.8-0.85 alpha; their CSS shadows peak ~0.5 and stay unblurred
 })
 -- Volume/brightness OSD (config/eww/widgets/osd.yuck). Same blurred, translucent
 -- look as the notifications; "fade" animates both map and unmap.
@@ -173,7 +193,7 @@ hl.layer_rule({
     name  = "eww-osd",
     match = { namespace = "eww-osd" },
     blur = true,
-    ignore_alpha = 0.3,
+    ignore_alpha = 0.5, -- box is 0.8 alpha (blurred); its CSS shadow peaks at 0.30 (left sharp)
     animation = "fade",
 })
 

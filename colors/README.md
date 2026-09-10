@@ -7,7 +7,7 @@ the format-specific color files consumed by each component.
 ## Schema
 
 A scheme file is plain `key=value` lines. Blank lines and lines starting with `#` are
-ignored (used for comments). Every scheme **must** define all 17 of these keys — no more
+ignored (used for comments). Every scheme **must** define all 18 of these keys — no more
 are required, and any missing one makes `generate-colors` abort:
 
 ```
@@ -15,6 +15,7 @@ bg0 bg1 bg2 bg3      # backgrounds, dark → light
 fg0 fg1 fg2          # foregrounds, dark → light
 accent0 accent1 accent2 accent3   # theme accents
 red orange yellow green blue purple   # semantic colors
+shadow               # drop-shadow tint (bg0 pulled ~75% toward black)
 ```
 
 `generate-colors` validates presence only (see `NAMES=(...)` and the "Missing color"
@@ -59,5 +60,5 @@ scripts/apply-theme everforest       # regenerate, then reload running component
 ## Adding a new scheme
 
 1. Copy an existing file (e.g. `cp everforest myscheme`).
-2. Set all 17 keys to bare-hex values.
+2. Set all 18 keys to bare-hex values.
 3. Run `scripts/generate-colors myscheme` (or `scripts/apply-theme myscheme`).

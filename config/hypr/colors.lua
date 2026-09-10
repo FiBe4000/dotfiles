@@ -21,4 +21,6 @@ return {
     green = "a7c080",
     blue = "7393b3",
     purple = "d699b6",
+
+    shadow = "0a0c0d",
 }

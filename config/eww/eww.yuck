@@ -24,6 +24,7 @@
 (include "widgets/osd.yuck")
 
 (defwindow bar
+  :namespace "eww-bar"
   :exclusive true
   :windowtype "dock"
   :stacking "bg"

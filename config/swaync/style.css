@@ -17,8 +17,19 @@
   --notification-group-icon-size: 32px;
   --border: 3px solid var(--noti-border-color);
   --border-radius: 20px;
-  --notification-shadow: 0 0 0 1px alpha(@bg0, 0.3),
-    0 1px 3px 1px alpha(@bg0, 0.7), 0 2px 6px 2px alpha(@bg0, 0.3);
+  /* Drop shadows: light from the top, slightly top-left, so they fall down and a
+     bit right (matches decoration.shadow.offset in hyprland.lua and the eww
+     recipes). Layered tight -> wide for a soft falloff. Combined alpha at the
+     card edge stays ~0.5, under the swaync layer rules' ignore_alpha (0.55), so
+     Hyprland never blurs the shadow itself. */
+  --notification-shadow:
+    0 1px 2px alpha(@shadow, 0.20),
+    1px 4px 10px alpha(@shadow, 0.20),
+    2px 10px 24px -4px alpha(@shadow, 0.22);
+  --control-center-shadow:
+    0 2px 6px alpha(@shadow, 0.20),
+    2px 10px 24px -4px alpha(@shadow, 0.22),
+    4px 24px 48px -12px alpha(@shadow, 0.22);
   --font-size-body: 15px;
   --font-size-summary: 16px;
   --hover-transition: background 0.15s ease-in-out;
@@ -74,10 +85,14 @@ notificationwindow, blankwindow {
 }
 
 .notification-row .notification-background {
-  padding: 6px 12px;
+  /* Room for the card's shadow (extent ~30px down, ~20px sideways); the
+     control-center list clips at its bounds. Window widths in config.json
+     are +16px to keep the card itself 476px wide. */
+  padding: 8px 20px 20px 20px;
 }
 
 .notification-row .notification-background .notification {
+  box-shadow: var(--notification-shadow);
   border-radius: var(--border-radius);
   border: 3px solid @bg3;
   padding: 0;
@@ -262,6 +277,7 @@ notificationwindow, blankwindow {
   color: var(--text-color);
   border: 3px solid @bg3;
   border-radius: var(--border-radius);
+  box-shadow: var(--control-center-shadow);
   margin-top: 12px;
   margin-bottom: 24px;
   margin-right: 24px;
@@ -273,10 +289,6 @@ notificationwindow, blankwindow {
 
 .control-center .control-center-list {
   background: transparent;
-}
-
-.control-center .control-center-list .notification {
-  box-shadow: var(--notification-shadow);
 }
 
 .control-center .control-center-list .notification .notification-default-action,
@@ -295,10 +307,6 @@ notificationwindow, blankwindow {
 
 .floating-notifications {
   background: transparent;
-}
-
-.floating-notifications .notification {
-  box-shadow: none;
 }
 
 /*** Widgets ***/

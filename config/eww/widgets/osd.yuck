@@ -21,13 +21,13 @@
   :geometry (geometry
               :anchor "bottom center"
               :y "20%"
-              :width "360px")
+              :width "424px")  ; 360px visible box + 2 x 32px shadow margin (_osd.scss)
   (osd)
 )
 
 (defwidget osd []
   (box
-    :class "osd ${osd_kind}"
+    :class "osd_box ${osd_kind}"  ; not "osd": eww also puts the window name on the window as a class
     :orientation "h"
     :space-evenly false
     :spacing 16

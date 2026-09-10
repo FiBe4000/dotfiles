@@ -25,3 +25,6 @@ yellow=ebcb8b
 green=a3be8c
 blue=81a1c1
 purple=b48ead
+
+# Shadow tint - bg0 pulled 75% toward black; used for drop shadows everywhere
+shadow=0c0d10

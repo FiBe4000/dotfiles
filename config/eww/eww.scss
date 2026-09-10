@@ -1,5 +1,6 @@
 @import 'colors';
 @import 'fonts';
+@import 'styles/shadows'; // variables only, safe before the * { all: unset } reset
 
 // Functional
 $transparent: rgba(#000000, 0);
@@ -44,7 +45,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   border-width: 0px 3px 3px 3px;
   border-color: $bg3;
   padding: 0px;
-  //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.19);
+  box-shadow: $shadow-bar;
 }
 
 .right_modules {
@@ -64,6 +65,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-right: 15px;
   padding-bottom: 5px;
   font-size: 25px;
+  box-shadow: $shadow-bar;
 
   .occupied {
     all: unset;
@@ -104,6 +106,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-left: 10px;
   padding-right: 10px;
   font-size: 20px;
+  box-shadow: $shadow-bar;
 }
 
 .media_info {
@@ -131,6 +134,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-right: 15px;
   padding-bottom: 5px;
   padding-right: 15px;
+  box-shadow: $shadow-bar;
 }
 
 .sensors {
@@ -144,6 +148,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-left: 15px;
   padding-bottom: 5px;
   padding-right: 15px;
+  box-shadow: $shadow-bar;
 }
 
 .memory {
@@ -250,7 +255,7 @@ $transparent-bg0: rgba($bg0, 0.5);
   color: $fg2;
   padding-left: 15px;
   padding-right: 15px;
-  //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.19);
+  box-shadow: $shadow-bar;
 }
 
 .system_tray menu {
