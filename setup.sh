@@ -151,11 +151,16 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   # the ksecretd that pam_kwallet5 started, unlocking kdewallet with the login
   # password -- Plasma pulls the same unit from plasma-workspace.target, so
   # wanting it from graphical-session.target makes it run under Hyprland/uwsm
-  # too without double-starting it in Plasma (same unit, one job).
+  # too without double-starting it in Plasma (same unit, one job). Its drop-in
+  # delays it until uwsm has imported the login environment and Hyprland is up
+  # -- see the comment in 10-after-env.conf; without it the unlock silently does
+  # nothing and every app wanting a secret gets a password dialog.
   sudo -u $user mkdir -p $home/.config/systemd/user/sockets.target.wants
   sudo -u $user mkdir -p $home/.config/systemd/user/graphical-session.target.wants
+  sudo -u $user mkdir -p $home/.config/systemd/user/plasma-kwallet-pam.service.d
   sudo -u $user ln -sfn /usr/lib/systemd/user/ssh-agent.socket                       $home/.config/systemd/user/sockets.target.wants/ssh-agent.socket
   sudo -u $user ln -sfn /usr/lib/systemd/user/plasma-kwallet-pam.service             $home/.config/systemd/user/graphical-session.target.wants/plasma-kwallet-pam.service
+  sudo -u $user ln -sfn $dotfilespath/config/systemd/user/plasma-kwallet-pam.service.d/10-after-env.conf $home/.config/systemd/user/plasma-kwallet-pam.service.d/10-after-env.conf
 
   echo "done. Unit symlinks changed; run 'systemctl --user daemon-reload' or re-login."
 else
