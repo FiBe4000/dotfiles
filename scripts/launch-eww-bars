@@ -6,16 +6,29 @@
 #
 # Eww uses monitor indices (not Hyprland connector names) for --screen.
 # We map from hyprctl monitor data to eww indices.
+#
+# When the set of bars has to change we restart the whole eww daemon instead of
+# closing and reopening windows. Eww's StatusNotifierHost is per *daemon*: it
+# syncs the already-registered tray items once, at daemon start, and a systray
+# widget created later only ever fills from live add_item events. So a rebuilt
+# bar comes up with an empty tray, and only apps that re-announce themselves to
+# a new host (libayatana-appindicator: nm-applet, gammastep) reappear — Electron
+# and Qt ones (teams-for-linux, outlook-for-linux, kgpg) stay gone until they
+# are restarted. Killing the daemon forces a fresh sync and brings all of them
+# back. Before the close loop was fixed to match live window ids, the bars were
+# never actually destroyed, which is why this never used to happen.
 
-# Close all existing bar instances. `eww active-windows` prints "<id>: <name>"
-# per open instance (`list-windows` only lists definitions, so stale
-# bar-<monitor> ids from a previous dock state never matched before).
-for id in $(eww active-windows 2>/dev/null | sed -n 's/^\(bar-[^:]*\):.*/\1/p'); do
-    eww close "$id" 2>/dev/null
-done
+# Monitor info: "<name> <eww index>", index = position in hyprctl's output.
+# Virtual outputs are dropped from the bar set (but not from the numbering):
+# Hyprland lists a "FALLBACK" output while no real monitor is attached, and
+# HEADLESS-* covers `hyprctl output create` — neither should get a bar, and
+# counting them as external would also hide the eDP-1 bar during an undock.
+monitor_data=$(hyprctl monitors -j | jq -r 'to_entries[]
+    | select(.value.name != "FALLBACK" and (.value.name | startswith("HEADLESS-") | not))
+    | "\(.value.name) \(.key)"')
 
-# Get monitor info: name and eww index (based on order from hyprctl)
-monitor_data=$(hyprctl monitors -j | jq -r 'to_entries[] | "\(.value.name) \(.key)"')
+# Bail on a transient hyprctl/jq failure rather than tearing the bars down.
+[[ -n "$monitor_data" ]] || exit 0
 
 # Check if any external monitors exist
 has_external=false
@@ -26,15 +39,30 @@ while IFS=' ' read -r name idx; do
     fi
 done <<< "$monitor_data"
 
-# Open bars on the right monitors
+# Build the desired bar set: "<eww index> <id>" per line
+desired=""
 while IFS=' ' read -r name idx; do
     if [[ "$has_external" == true ]]; then
         # Docked — bars on external monitors only
-        if [[ "$name" != "eDP-1" ]]; then
-            eww open bar --screen "$idx" --id "bar-${name}"
-        fi
-    else
-        # Standalone — bar on laptop display
-        eww open bar --screen "$idx" --id "bar-${name}"
+        [[ "$name" == "eDP-1" ]] && continue
     fi
+    desired+="${idx} bar-${name}"$'\n'
 done <<< "$monitor_data"
+
+# Nothing to do if exactly the wanted bars are already up. `eww active-windows`
+# prints "<id>: <name>" per open instance (`list-windows` only lists window
+# definitions, so stale bar-<monitor> ids never matched there).
+active=$(eww active-windows 2>/dev/null | sed -n 's/^\(bar-[^:]*\):.*/\1/p' | sort)
+wanted=$(cut -d' ' -f2- <<< "$desired" | grep -v '^$' | sort)
+[[ "$active" == "$wanted" ]] && exit 0
+
+# Full daemon restart — see the note on the tray above. The first `eww open`
+# forks into the daemon, which inherits our stdout and never closes it, so a
+# caller that pipes this script's output would hang; eww keeps its own log in
+# ~/.cache/eww/ anyway.
+eww kill 2>/dev/null
+
+while IFS=' ' read -r idx id; do
+    [[ -n "$id" ]] || continue
+    eww open bar --screen "$idx" --id "$id" > /dev/null 2>&1
+done <<< "$desired"
