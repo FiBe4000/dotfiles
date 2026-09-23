@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+# Dashboard overlay (widgets/dashboard.yuck): window lifecycle plus every
+# action the cards trigger.
+#   dashboard toggle | open | close
+#   dashboard session lock|sleep|logout|reboot|poweroff
+#   dashboard radio wifi|bt
+#   dashboard mute sink|source
+#   dashboard set volume|mic|brightness <0-100>
+#   dashboard media previous|play-pause|next
+#   dashboard seek <0-100>
+#
+# Actions only act. The new state comes back through the listeners/polls that
+# feed the widgets (getvol, getmic, dashboard-radios, ...) -- writing a slider's
+# own var from here would re-trigger its :onchange (see the yuck header).
+#
+# `open` seeds every var first so the first frame is never stale, and only
+# opens if the window is not already up (`eww open` on an open instance
+# recreates the surface and replays the fade). `close` is idempotent and safe
+# from anywhere: the backdrop click, the Hyprland Escape bind of the
+# "dashboard" submap, and the session actions. Hyprland enters/leaves that
+# submap on the layer's own open/close events, so nothing here touches it.
+#
+# DASHBOARD_DRY_RUN=1 prints the session commands instead of running them.
+
+set -u
+
+cmd=${1:-}
+arg=${2:-}
+arg2=${3:-}
+
+# A wedged or missing daemon must never be started by a click or a keybind
+# (`eww open` auto-daemonises; a wedged daemon answers rc 0 with empty output).
+[ "$(eww ping 2>/dev/null)" = pong ] || exit 0
+
+rt=${XDG_RUNTIME_DIR:-/tmp}
+here=$(dirname "$(readlink -f "$0")")
+CONFIRM_S=4   # two-tap window for reboot/poweroff
+
+usage() { echo "usage: dashboard $*" >&2; exit 2; }
+
+run() {
+    if [ -n "${DASHBOARD_DRY_RUN:-}" ]; then
+        echo "dry-run: $*"
+    else
+        "$@"
+    fi
+}
+
+focused_idx() {
+    # eww --screen takes a monitor index; hyprctl order matches GDK order
+    # (same assumption as launch-eww-bars and osd). `// 0`: no monitor focused.
+    hyprctl monitors -j | jq -r 'map(.focused) | index(true) // 0'
+}
+
+reserved_top() {
+    # Height of the bar's exclusive zone on monitor index $1 (logical px). The
+    # window is anchored top and pulled up by this much so it covers the bar
+    # too (see the defwindow comment).
+    hyprctl monitors -j | jq -r ".[$1].reserved[1] // 0"
+}
+
+is_open() { eww active-windows 2>/dev/null | grep -q '^dashboard:'; }
+
+do_close() {
+    eww close dashboard >/dev/null 2>&1 || true
+    eww update dashboard_open=false dashboard_confirm="" dash_hover=""
+}
+
+do_open() {
+    local backlight=false bright
+    [ -n "$(ls /sys/class/backlight 2>/dev/null)" ] && backlight=true
+    bright=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d %)
+    [[ $bright =~ ^[0-9]+$ ]] || bright=0
+    eww update dashboard_open=true dashboard_confirm="" dash_hover="" \
+        has_backlight="$backlight" brightness="$bright" \
+        radios="$("$here/dashboard-radios")"
+    # Serialise the check-then-open: two quick clicks must not both see
+    # "not open" and recreate the surface.
+    (
+        flock -w 1 8 || exit 0
+        if ! is_open; then
+            idx=$(focused_idx)
+            eww open dashboard --screen "$idx" --pos "0x-$(reserved_top "$idx")"
+        fi
+    ) 8>"$rt/eww-dashboard.open.lock"
+}
+
+# First tap arms `dashboard_confirm`, a second tap on the same button within
+# CONFIRM_S runs the command. One flock-guarded resetter at a time; a tap on the
+# other armed button just changes the var and rides the running timer.
+confirm_then() {
+    local kind=$1
+    shift
+    if [ "$(eww get dashboard_confirm)" = "$kind" ]; then
+        do_close
+        run "$@"
+    else
+        eww update dashboard_confirm="$kind"
+        (
+            flock -n 9 || exit 0
+            sleep "$CONFIRM_S"
+            eww update dashboard_confirm=""
+        ) 9>"$rt/eww-dashboard.confirm.lock" >/dev/null 2>&1 &
+    fi
+}
+
+# Percent argument from a scale: integer, clamped to 0-100 (the scales use
+# :max 101 so that 100 is reachable, see dashboard.yuck).
+pct_arg() {
+    local v=${1%%.*}
+    [[ $v =~ ^[0-9]+$ ]] || return 1
+    [ "$v" -gt 100 ] && v=100
+    echo "$v"
+}
+
+case "$cmd" in
+    toggle)
+        if is_open; then do_close; else do_open; fi
+        ;;
+    open)
+        do_open
+        ;;
+    close)
+        do_close
+        ;;
+    session)
+        case "$arg" in
+            # setsid: hyprlock must not stay a child of the eww button handler.
+            lock)     do_close; run setsid -f uwsm app -- hyprlock ;;
+            sleep)    do_close; run systemctl suspend ;;   # hypridle locks in before_sleep_cmd
+            logout)   do_close; run uwsm stop ;;
+            reboot)   confirm_then reboot systemctl reboot ;;
+            poweroff) confirm_then poweroff systemctl poweroff ;;
+            *)        usage "session lock|sleep|logout|reboot|poweroff" ;;
+        esac
+        ;;
+    radio)
+        case "$arg" in
+            wifi)
+                if [ "$(nmcli -t -f WIFI g 2>/dev/null)" = enabled ]; then
+                    nmcli radio wifi off
+                else
+                    nmcli radio wifi on
+                fi
+                ;;
+            bt)
+                # bluetoothctl, not rfkill: blueman/bluez own the adapter state.
+                if bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then
+                    bluetoothctl power off >/dev/null
+                else
+                    bluetoothctl power on >/dev/null
+                fi
+                ;;
+            *) usage "radio wifi|bt" ;;
+        esac
+        # Optimistic refresh so the toggle flips now rather than on the 2 s poll.
+        eww update radios="$("$here/dashboard-radios")"
+        ;;
+    mute)
+        case "$arg" in
+            sink)   pamixer -t ;;
+            source) pamixer --default-source -t ;;
+            *)      usage "mute sink|source" ;;
+        esac
+        ;;
+    set)
+        v=$(pct_arg "$arg2") || usage "set volume|mic|brightness <0-100>"
+        case "$arg" in
+            volume)     pamixer --set-volume "$v" ;;
+            mic)        pamixer --default-source --set-volume "$v" ;;
+            # Same 5% floor as the OSD so the panel never goes fully black.
+            brightness) brightnessctl -q -n5% set "$v%" ;;
+            *)          usage "set volume|mic|brightness <0-100>" ;;
+        esac
+        ;;
+    media)
+        case "$arg" in
+            previous|play-pause|next) playerctl "$arg" 2>/dev/null ;;
+            *) usage "media previous|play-pause|next" ;;
+        esac
+        ;;
+    seek)
+        v=$(pct_arg "$arg") || usage "seek <0-100>"
+        # mpris:length is in microseconds; players without one (streams) are
+        # not seekable and playerctl fails silently.
+        len=$(playerctl metadata mpris:length 2>/dev/null)
+        [[ $len =~ ^[0-9]+$ ]] && [ "$len" -gt 0 ] || exit 0
+        playerctl position "$(( len / 1000000 * v / 100 ))" 2>/dev/null
+        ;;
+    *)
+        usage "toggle|open|close|session|radio|mute|set|media|seek ..."
+        ;;
+esac

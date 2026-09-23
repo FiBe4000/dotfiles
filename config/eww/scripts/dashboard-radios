@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# One JSON line for the dashboard's control centre: wifi/bluetooth power state,
+# whether the hardware exists at all (the toggles hide without it -- the
+# desktop has neither), and the active wifi connection name.
+# Polled every 2 s while the dashboard is open, and run directly by
+# scripts/dashboard to seed the var before opening and right after a toggle.
+
+set -u
+
+wifi_hw=true wifi=false
+# "<WIFI-HW>:<WIFI>", e.g. "enabled:enabled" or "missing:enabled".
+case "$(nmcli -t -f WIFI-HW,WIFI g 2>/dev/null)" in
+    missing:*) wifi_hw=false ;;
+    *:enabled) wifi=true ;;
+esac
+
+bt_hw=false bt=false
+# `show` prints nothing usable without a controller.
+bt_show=$(bluetoothctl show 2>/dev/null)
+if grep -q 'Controller' <<< "$bt_show"; then
+    bt_hw=true
+    grep -q 'Powered: yes' <<< "$bt_show" && bt=true
+fi
+
+# Connection name of the active wifi profile (normally the SSID). `con show`
+# reads NM state; `dev wifi list` could kick off a scan.
+ssid=""
+if [ "$wifi" = true ]; then
+    ssid=$(nmcli -t -f NAME,TYPE con show --active 2>/dev/null | sed -n 's/:802-11-wireless$//p' | head -1)
+fi
+
+jq -cn --argjson wifi "$wifi" --argjson wifi_hw "$wifi_hw" \
+       --argjson bt "$bt" --argjson bt_hw "$bt_hw" --arg ssid "$ssid" \
+       '{wifi: $wifi, wifi_hw: $wifi_hw, bt: $bt, bt_hw: $bt_hw, ssid: $ssid}'

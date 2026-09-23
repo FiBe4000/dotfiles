@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# Print the default source's volume/mute as one JSON line, then re-print on
+# any source change. Same retry-loop shape as getvol/getmute: if `pactl
+# subscribe` exits (audio server not up yet at login, connection dropped),
+# re-emit and re-subscribe instead of letting the deflisten die. "source"
+# also matches source-output events; that only re-emits the same value.
+
+set -u
+
+emit() {
+    local v m
+    v=$(pamixer --default-source --get-volume 2>/dev/null)
+    m=$(pamixer --default-source --get-mute 2>/dev/null)
+    [[ $v =~ ^[0-9]+$ ]] || v=0
+    [ "$m" = true ] || m=false
+    printf '{"volume":%s,"muted":%s}\n' "$v" "$m"
+}
+
+while true; do
+    emit
+    pactl subscribe 2>/dev/null | grep --line-buffered "source" | while read -r _; do
+        emit
+    done
+    sleep 2
+done

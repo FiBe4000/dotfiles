@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+# Current weather for the dashboard card as one JSON line, from Open-Meteo
+# (no API key). Coordinates come from ../weather-location ("lat lon [label]",
+# gitignored; see weather-location.example). No GeoIP fallback on purpose:
+# the work VPN moves the IP exit hundreds of km.
+#
+# The last good answer is cached so the card never goes blank on a failed
+# poll: on error the cache is re-emitted with "stale": true. Every key is
+# always present, so the yuck can index them without guards.
+
+set -u
+
+here=$(dirname "$(readlink -f "$0")")
+loc_file="$here/../weather-location"
+cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/eww
+cache="$cache_dir/weather.json"
+
+fail() {
+    # $1: reason. Prefer the cached result, flagged stale.
+    if [ -s "$cache" ] && jq -e '.ok' "$cache" >/dev/null 2>&1; then
+        jq -c '.stale = true' "$cache"
+    else
+        jq -cn --arg reason "$1" \
+            '{ok:false,stale:false,reason:$reason,temp:0,code:-1,is_day:1,icon:"",text:"",label:"",ts:0}'
+    fi
+    exit 0
+}
+
+read -r lat lon label < <(grep -v '^[[:space:]]*#' "$loc_file" 2>/dev/null | grep -m1 .) || true
+num='^-?[0-9]+(\.[0-9]+)?$'
+[[ ${lat:-} =~ $num && ${lon:-} =~ $num ]] || fail no-location
+
+url="https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code,is_day&timezone=auto"
+resp=$(curl -sf -m 10 "$url") || fail offline
+read -r temp code is_day < <(jq -r '.current | "\(.temperature_2m | round) \(.weather_code) \(.is_day)"' <<< "$resp" 2>/dev/null) || true
+[[ ${code:-} =~ ^[0-9]+$ ]] || fail offline
+
+# WMO weather codes -> text and Nerd Font (Material Design) glyph, day/night.
+case "$code" in
+    0)        text="Clear";                icon="󰖙"; night="󰖔" ;;
+    1)        text="Mainly clear";         icon="󰖕"; night="󰼱" ;;
+    2)        text="Partly cloudy";        icon="󰖕"; night="󰼱" ;;
+    3)        text="Overcast";             icon="󰖐" ;;
+    45)       text="Fog";                  icon="󰖑" ;;
+    48)       text="Rime fog";             icon="󰖑" ;;
+    51)       text="Light drizzle";        icon="󰼳" ;;
+    53)       text="Drizzle";              icon="󰼳" ;;
+    55)       text="Dense drizzle";        icon="󰼳" ;;
+    56|57)    text="Freezing drizzle";     icon="󰼳" ;;
+    61)       text="Light rain";           icon="󰖗" ;;
+    63)       text="Rain";                 icon="󰖗" ;;
+    65)       text="Heavy rain";           icon="󰖖" ;;
+    66|67)    text="Freezing rain";        icon="󰖗" ;;
+    71)       text="Light snow";           icon="󰖘" ;;
+    73)       text="Snow";                 icon="󰖘" ;;
+    75)       text="Heavy snow";           icon="󰖘" ;;
+    77)       text="Snow grains";          icon="󰖘" ;;
+    80|81)    text="Rain showers";         icon="󰖗" ;;
+    82)       text="Violent showers";      icon="󰖖" ;;
+    85|86)    text="Snow showers";         icon="󰖘" ;;
+    95)       text="Thunderstorm";         icon="󰖓" ;;
+    96|99)    text="Thunderstorm, hail";   icon="󰙾" ;;
+    *)        text="Unknown";              icon="󰖝" ;;
+esac
+[ "$is_day" = 0 ] && [ -n "${night:-}" ] && icon=$night
+
+out=$(jq -cn --argjson temp "$temp" --argjson code "$code" --argjson is_day "$is_day" \
+             --arg icon "$icon" --arg text "$text" --arg label "${label:-}" --argjson ts "$(date +%s)" \
+             '{ok:true,stale:false,reason:"",temp:$temp,code:$code,is_day:$is_day,icon:$icon,text:$text,label:$label,ts:$ts}')
+
+# Atomic rename: a reader landing mid-write would see a truncated file.
+mkdir -p "$cache_dir"
+printf '%s\n' "$out" > "$cache.tmp" && mv -f "$cache.tmp" "$cache"
+echo "$out"

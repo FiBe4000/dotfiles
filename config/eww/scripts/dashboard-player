@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+# Media state for the dashboard card.
+#   dashboard-player            deflisten: one JSON line per metadata/status
+#                               change of the active player (playerctld picks
+#                               the most recently active one, so no -p)
+#   dashboard-player position   one JSON line with position/length for the
+#                               1 s poll that runs while the dashboard is open
+#
+# `playerctl -F` blocks until a player appears, prints on every change and an
+# empty line when the last player goes away. The loop restarts it if it ever
+# exits (dbus hiccup at login). Album art is copied to a hash-named file under
+# $XDG_RUNTIME_DIR: the yuck shows it as a CSS background-image, which only
+# reloads when the path changes, and http(s) art needs a local file anyway.
+
+set -u
+
+rt=${XDG_RUNTIME_DIR:-/tmp}
+art_dir="$rt/eww-art"
+
+fmt_time() { printf '%d:%02d' $(( $1 / 60 )) $(( $1 % 60 )); }
+
+if [ "${1:-}" = position ]; then
+    pos=$(playerctl position 2>/dev/null)
+    len=$(playerctl metadata mpris:length 2>/dev/null)
+    pos=${pos%%.*}
+    [[ $pos =~ ^[0-9]+$ ]] || pos=0
+    [[ $len =~ ^[0-9]+$ ]] || len=0
+    len=$(( len / 1000000 ))
+    pct=0
+    if [ "$len" -gt 0 ]; then
+        pct=$(( pos * 100 / len ))
+        [ "$pct" -gt 100 ] && pct=100
+    fi
+    printf '{"pct":%d,"pos":"%s","len":"%s"}\n' "$pct" "$(fmt_time "$pos")" "$(fmt_time "$len")"
+    exit 0
+fi
+
+inactive='{"active":false,"player":"","status":"Stopped","title":"","artist":"","art":"","length":0}'
+
+cache_art() {
+    # $1: mpris:artUrl (file:// or http(s)://). Prints the local path or "".
+    local url=$1 file src
+    [ -n "$url" ] || { echo ""; return; }
+    file="$art_dir/$(printf %s "$url" | md5sum | cut -c1-16).img"
+    if [ ! -s "$file" ]; then
+        case "$url" in
+            file://*)
+                src=${url#file://}
+                src=$(printf '%b' "${src//%/\\x}")   # undo percent-encoding
+                cp -f "$src" "$file" 2>/dev/null
+                ;;
+            http://*|https://*)
+                curl -sf -m 10 -o "$file" "$url" 2>/dev/null
+                ;;
+        esac
+    fi
+    if [ -s "$file" ]; then echo "$file"; else echo ""; fi
+}
+
+mkdir -p "$art_dir"
+# Unit separator between fields: a whitespace IFS would collapse empty ones
+# (no artist) and shift everything after it.
+sep=$'\x1f'
+fmt="{{playerName}}${sep}{{status}}${sep}{{title}}${sep}{{artist}}${sep}{{mpris:artUrl}}${sep}{{mpris:length}}"
+
+while true; do
+    echo "$inactive"
+    playerctl -F metadata -f "$fmt" 2>/dev/null | while IFS=$sep read -r name status title artist arturl length; do
+        if [ -z "$name" ]; then
+            echo "$inactive"
+            continue
+        fi
+        art=$(cache_art "$arturl")
+        [[ $length =~ ^[0-9]+$ ]] || length=0
+        jq -cn --arg name "$name" --arg status "$status" --arg title "$title" \
+               --arg artist "$artist" --arg art "$art" --argjson length "$length" \
+               '{active:true,player:$name,status:$status,title:$title,artist:$artist,art:$art,length:$length}'
+    done
+    sleep 2
+done

@@ -1,27 +1,14 @@
-;(defpoll playeractive
-  ;:interval "1s"
-  ;`if [[ "$(playerctl -l 2>&1)" == "No players found" ]]; then echo false; else echo true; fi`
-;)
-
-(defvar playeractive false)
 (deflisten currentvolume `scripts/getvol`)
 (deflisten volumemuted `scripts/getmute`)
-
-(defpoll playpause
-  :interval "0.3s"
-  :run-while playeractive
-  `playerctl -p $(tail -1 /tmp/player-last) status 2>/dev/null | grep Playing >/dev/null && echo '' || echo ''`)
-
-(defpoll mediainfo
-  :interval "1s"
-  :run-while playeractive
-  "bash ~/.config/eww/scripts/getmediainfo.sh")
+;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
+;; follows the most recently active player, so no per-player bookkeeping here.
 
 (deflisten workspaces :initial "[]" "bash ~/.config/eww/scripts/get-workspaces")
 
 (deflisten current_workspace :initial "1" "bash ~/.config/eww/scripts/get-active-workspace")
 
 (include "widgets/osd.yuck")
+(include "widgets/dashboard.yuck")
 
 (defwindow bar
   :namespace "eww-bar"
@@ -91,7 +78,10 @@
     :class "power"
     :orientation "h"
     :space-evenly false
-    (button :class "power_button" :onclick "hyprctl dispatch workspace 1 || hyprctl dispatch 'hl.dsp.focus({ workspace = 1 })'" "")
+    (button :class "power_button"
+            :timeout "1s" ; dashboard script does several eww IPC round-trips
+            :onclick "~/.config/eww/scripts/dashboard toggle"
+            "")
   )
 )
 
@@ -138,7 +128,7 @@
     :orientation "h"
     :spacing 12
     :space-evenly false
-    :visible playeractive
+    :visible {player.active}
     (media_controls)
     (media_info)
   )
@@ -151,13 +141,13 @@
     :spacing 12
     :space-evenly false
     (button :class "previous_button"
-            :onclick "playerctl -p $(tail -1 /tmp/player-last) previous"
+            :onclick "playerctl previous"
             "")
     (button :class "play_pause_button"
-            :onclick "playerctl -p $(tail -1 /tmp/player-last) play-pause"
-            "${playpause}")
+            :onclick "playerctl play-pause"
+            {player.status == "Playing" ? "" : ""})
     (button :class "next_button"
-            :onclick "playerctl -p $(tail -1 /tmp/player-last) next"
+            :onclick "playerctl next"
             "")
   )
 )
@@ -166,7 +156,11 @@
   (box
     :class "media_info"
     :orientation "h"
-    (label :text "${mediainfo}")
+    (label :limit-width 75 :show-truncated true
+           :text "${player.player == "spotify" ? " "
+                   : player.player == "firefox" ? " "
+                   : player.player == "chromium" ? " "
+                   : " "} ${player.artist != "" ? "${player.artist} - " : ""}${player.title}")
   )
 )
 

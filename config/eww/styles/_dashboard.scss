@@ -1,0 +1,331 @@
+// Full-screen dashboard overlay (widgets/dashboard.yuck). Cards are sized in
+// yuck (:width/:height); this file only paints them. Radius follows Hyprland's
+// decoration.rounding and the 6px gaps its gaps_in, so the band reads as a
+// tiled group of windows on a frosted backdrop, not as a floating panel.
+// Opaque $bg0 cards + 3px $bg3 border like the bar modules; the backdrop is
+// rofi's bg0-overlay (bg0 at 0.4), blurred by the layer rule. Every pixel of
+// the surface is >= 0.4 alpha (shadows composite over the backdrop), so the
+// rule needs no ignore_alpha and the shadows are simply blurred along.
+$card-radius: 13px;
+
+// eww adds the window name as a class on the toplevel; keep it transparent.
+.dashboard {
+  background-color: $transparent;
+}
+
+.dash_backdrop {
+  background-color: rgba($bg0, 0.4);
+}
+
+.dash_grid {
+  font-family: $mono-font;
+  color: $fg0;
+}
+
+.dash_card {
+  background-color: $bg0;
+  border-style: solid;
+  border-width: 3px;
+  border-color: $bg3;
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+  padding: 18px;
+}
+
+// --- profile ----------------------------------------------------------------
+
+.dash_avatar {
+  border-radius: 50%;
+  background-color: $bg2;
+  background-size: cover;
+  background-position: center;
+}
+
+.dash_avatar_fallback {
+  font-size: 96px;
+  color: $fg1;
+}
+
+.dash_name {
+  font-size: 22px;
+  font-weight: bold;
+  color: $red;
+}
+
+// --- clock ------------------------------------------------------------------
+
+.dash_time {
+  font-size: 64px;
+  font-weight: bold;
+  color: $blue;
+}
+
+.dash_weekday {
+  font-size: 20px;
+  color: $fg0;
+}
+
+.dash_date {
+  font-size: 16px;
+  color: $fg1;
+}
+
+// --- weather ----------------------------------------------------------------
+
+.dash_weather_icon {
+  font-size: 56px;
+
+  &.day {
+    color: $yellow;
+  }
+
+  &.night {
+    color: $blue;
+  }
+}
+
+.dash_weather_temp {
+  font-size: 36px;
+  font-weight: bold;
+  color: $accent1;
+
+  &.stale {
+    color: $fg1; // cached value, network was down at the last poll
+  }
+}
+
+.dash_weather_text {
+  font-size: 16px;
+  color: $red;
+}
+
+// --- media ------------------------------------------------------------------
+
+.dash_art {
+  border-radius: $card-radius;
+  background-color: $bg1;
+  background-size: cover;
+  background-position: center;
+}
+
+.dash_art_fallback,
+.dash_media_placeholder_icon {
+  font-size: 72px;
+  color: $fg1;
+}
+
+.dash_media_placeholder {
+  font-size: 16px;
+  color: $fg1;
+}
+
+.dash_media_title {
+  font-size: 20px;
+  font-weight: bold;
+  color: $fg2;
+}
+
+.dash_media_artist {
+  font-size: 16px;
+  color: $fg1;
+}
+
+.dash_media_btn_icon {
+  font-size: 32px;
+  color: $green; // same as the bar's .media_controls
+  transition: color 0.2s;
+}
+
+.dash_media_btn:hover .dash_media_btn_icon {
+  color: $fg2;
+}
+
+.dash_media_time {
+  font-size: 13px;
+  color: $fg1;
+}
+
+// --- control centre ---------------------------------------------------------
+
+.dash_toggle {
+  padding: 0;
+}
+
+// The label is the circle (state class flips on it, see dashboard.yuck).
+.dash_toggle_icon {
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50%;
+  font-size: 26px;
+  transition: background-color 0.2s, color 0.2s;
+
+  &.on {
+    background-color: $accent2;
+    color: $bg0;
+  }
+
+  &.off {
+    background-color: $bg2;
+    color: $fg1;
+  }
+}
+
+.dash_toggle:hover .dash_toggle_icon {
+  &.on {
+    background-color: $fg2;
+  }
+
+  &.off {
+    background-color: $bg3;
+    color: $fg0;
+  }
+}
+
+.dash_slider_icon {
+  font-size: 22px;
+  min-width: 30px; // fixed slot so the tracks line up between glyphs
+}
+
+.dash_slider_icon_volume {
+  color: $accent2;
+}
+
+.dash_slider_icon_mic {
+  color: $accent1;
+}
+
+.dash_slider_icon_brightness {
+  color: $yellow;
+}
+
+// OSD recipe: thin full-range trough, thicker fill overhanging it, round knob.
+// Adwaita layout: the knob has a negative margin on all sides, so GTK lays it
+// out as a small box and its centre sits exactly on the trough ends at 0 and
+// 100; the scale's horizontal padding is the room it overhangs into (without
+// it the half-knob at the ends is clipped at the widget edge).
+.dash_slider {
+  padding: 0 9px;
+}
+
+.dash_slider trough {
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: rgba($fg0, 0.45);
+  margin: 8px 0;
+}
+
+.dash_slider trough highlight {
+  min-height: 12px;
+  margin: -4px 0;
+  border-radius: 6px;
+}
+
+.dash_slider trough slider {
+  min-width: 18px;
+  min-height: 18px;
+  margin: -7px -9px;
+  border-radius: 50%;
+  background-color: $fg2;
+}
+
+.dash_slider_volume trough highlight {
+  background-color: $accent2;
+}
+
+.dash_slider_mic trough highlight {
+  background-color: $accent1;
+}
+
+.dash_slider_brightness trough highlight {
+  background-color: $yellow;
+}
+
+.dash_slider_seek trough highlight {
+  background-color: $green;
+}
+
+// --- session ----------------------------------------------------------------
+
+.dash_session {
+  padding: 0;
+  transition: background-color 0.2s;
+}
+
+.dash_session_icon {
+  font-size: 40px;
+  transition: color 0.2s;
+
+  &.lock {
+    color: $blue;
+  }
+
+  &.sleep {
+    color: $purple;
+  }
+
+  &.logout {
+    color: $yellow;
+  }
+
+  &.reboot {
+    color: $orange;
+  }
+
+  &.poweroff {
+    color: $red;
+  }
+
+  &.confirm {
+    color: $red; // armed: tap again within 4 s
+  }
+}
+
+.dash_session_lock:hover {
+  background-color: rgba($blue, 0.15);
+}
+
+.dash_session_sleep:hover {
+  background-color: rgba($purple, 0.15);
+}
+
+.dash_session_logout:hover {
+  background-color: rgba($yellow, 0.15);
+}
+
+.dash_session_reboot:hover {
+  background-color: rgba($orange, 0.15);
+}
+
+.dash_session_poweroff:hover {
+  background-color: rgba($red, 0.15);
+}
+
+// --- tooltips ---------------------------------------------------------------
+
+// Button hover text ("WiFi: <ssid>", "Reboot", ...). GTK tooltips are separate
+// popup windows of the same process, so the global `* { all: unset }` strips
+// them too and they need styling from scratch. Same card recipe, no shadow
+// (popups get no room for one).
+tooltip {
+  background-color: $bg1;
+  border-style: solid;
+  border-width: 3px;
+  border-color: $bg3;
+  border-radius: $card-radius;
+  padding: 6px 12px;
+  font-family: $mono-font;
+  font-size: 14px;
+  color: $fg0;
+
+  // GTK sizes the popup from the label, so the room around the text has to
+  // come from the label's own padding, not the tooltip node's.
+  * {
+    background-color: $transparent;
+    color: $fg0;
+    padding: 2px 10px;
+  }
+
+  decoration {
+    background-color: $transparent;
+  }
+}

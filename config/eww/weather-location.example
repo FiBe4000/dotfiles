@@ -1,0 +1,4 @@
+# Weather location for scripts/dashboard-weather (Open-Meteo needs coordinates).
+# One data line: latitude longitude [label]. Copy this file to
+# weather-location, which is gitignored so the real location stays out of the repo.
+57.7089 11.9746 Gothenburg

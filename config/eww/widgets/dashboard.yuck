@@ -1,0 +1,271 @@
+;; Full-screen dashboard overlay: profile, clock, weather, media, control
+;; centre and session buttons on a translucent backdrop. Toggled from the bar's
+;; Arch button through scripts/dashboard, which also seeds the vars and picks
+;; the focused monitor. It covers the whole monitor, bar included; the Hyprland
+;; layer rule matching :namespace "eww-dashboard" blurs the backdrop and fades
+;; the surface. Escape is a Hyprland submap bind entered/left on the layer's
+;; open/close events -- eww 0.5.0 has no key handler. The window is :focusable
+;; (exclusive keyboard) so stray keys end in GTK, not in the app underneath.
+;;
+;; Click-outside: the backdrop eventbox is the overlay's base child and the
+;; card grid is overlaid on it, wrapped in its own eventbox. A plain box has no
+;; GDK window, so clicks on card padding fell through to the backdrop and
+;; closed the overlay; the eventbox owns an input window and its (handler-less)
+;; click just bubbles to the overlay, never to the sibling backdrop. Nesting the
+;; grid inside the backdrop eventbox would not work either: eww handlers let
+;; button events bubble to ancestor eventboxes and every card click would close.
+;;
+;; Sliders: GTK emits value-changed for programmatic :value updates too, so a
+;; listener echo would re-run :onchange. Values are integers (:round-digits 0,
+;; pamixer/brightnessctl set integers) so the echo equals what is shown and
+;; nothing fires, and :onchange only acts while the pointer is over that slider
+;; (dash_hover, set by the wrapping eventbox) so poll ticks never seek or set.
+;;
+;; State classes live on leaf labels (see osd.yuck) and card sizes use
+;; :width/:height, the outer allocation including the 3px border -- GTK CSS
+;; min-width/min-height would exclude border and padding.
+
+;; Grid geometry: the five session squares + four gaps set the band height.
+;; Hyprland gaps_in = 6 between cards, decoration.rounding = 13 (_dashboard.scss).
+(defvar dash_s 96)          ; session square, outer
+(defvar dash_gap 6)
+(defvar dash_h 504)         ; dash_s*5 + dash_gap*4 -- keep in sync
+(defvar dash_w_profile 260)
+(defvar dash_w_tile 260)    ; clock / weather
+(defvar dash_h_tile 220)    ; media gets dash_h - dash_gap - dash_h_tile
+(defvar dash_w_cc 300)      ; control centre
+
+(defvar dashboard_open false)  ; set by scripts/dashboard; gates the :run-while polls
+(defvar dashboard_confirm "")  ; "" | "reboot" | "poweroff" (two-tap confirm)
+(defvar dash_hover "")         ; slider under the pointer: only then does :onchange act
+
+;; --- data sources -----------------------------------------------------------
+
+(defpoll avatar_path :interval "1h" :initial ""
+  `[ -r "$HOME/.face" ] && echo "$HOME/.face" || echo ""`)
+(defpoll user_name :interval "1h" :initial ""
+  `n=$(getent passwd "$USER" | cut -d: -f5 | cut -d, -f1); if [ -n "$n" ]; then echo "$n"; else echo "$USER"; fi`)
+
+;; Every key is always present so the yuck below never indexes a missing field.
+(defpoll weather :interval "20m"
+  :initial '{"ok":false,"stale":false,"reason":"init","temp":0,"code":-1,"is_day":1,"icon":"","text":"","label":"","ts":0}'
+  "~/.config/eww/scripts/dashboard-weather")
+
+(deflisten player
+  :initial '{"active":false,"player":"","status":"Stopped","title":"","artist":"","art":"","length":0}'
+  "~/.config/eww/scripts/dashboard-player")
+(defpoll player_pos :interval "1s" :run-while {dashboard_open && player.active}
+  :initial '{"pct":0,"pos":"0:00","len":"0:00"}'
+  "~/.config/eww/scripts/dashboard-player position")
+
+(deflisten mic :initial '{"volume":0,"muted":false}' "~/.config/eww/scripts/getmic")
+(defpoll radios :interval "2s" :run-while dashboard_open
+  :initial '{"wifi":false,"wifi_hw":false,"bt":false,"bt_hw":false,"ssid":""}'
+  "~/.config/eww/scripts/dashboard-radios")
+;; Desktop has no backlight: the brightness row hides. hypridle dims on idle,
+;; so this is a gated poll rather than a daemon-lifetime udev listener.
+(defpoll has_backlight :interval "1h" :initial false
+  `[ -n "$(ls /sys/class/backlight 2>/dev/null)" ] && echo true || echo false`)
+(defpoll brightness :interval "1s" :run-while {dashboard_open && has_backlight} :initial 0
+  `v=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d %); if [ -n "$v" ]; then echo "$v"; else echo 0; fi`)
+
+;; --- window -----------------------------------------------------------------
+
+(defwindow dashboard
+  :monitor 0                   ; overridden per call: eww open dashboard --screen N
+  :namespace "eww-dashboard"   ; Hyprland layer rule: blur + fade; submap for Escape
+  :stacking "overlay"
+  :exclusive false
+  ;; :focusable true = exclusive keyboard interactivity: the layer holds keyboard
+  ;; focus while open, so keys land in GTK (which has no handlers for them) and
+  ;; never reach the window underneath. Escape is still a Hyprland bind (binds
+  ;; run before any surface sees the key). App focus returns on close.
+  :focusable true
+  ;; A non-exclusive layer surface is placed inside the area left over by the
+  ;; bar's exclusive zone, so a monitor-sized window anchored "center" lands
+  ;; 30px too low and the bar stays uncovered. Anchoring top and pulling it up
+  ;; by the reserved height covers the whole monitor; the offset is the monitor's
+  ;; `reserved` top, passed per call by scripts/dashboard as `--pos 0x-<top>`.
+  :geometry (geometry :anchor "top center" :width "100%" :height "100%")
+  (dashboard)
+)
+
+(defwidget dashboard []
+  (overlay
+    (eventbox :class "dash_backdrop" :hexpand true :vexpand true
+              :timeout "1s"
+              :onclick "~/.config/eww/scripts/dashboard close"
+      (box))
+    (eventbox :class "dash_grid_catch" :halign "center" :valign "center"
+      (box :class "dash_grid"
+           :orientation "h" :space-evenly false :spacing dash_gap
+      (card_profile :width dash_w_profile :height dash_h)
+      (box :orientation "v" :space-evenly false :spacing dash_gap
+        (box :orientation "h" :space-evenly true :spacing dash_gap
+          (card_clock   :width dash_w_tile :height dash_h_tile)
+          (card_weather :width dash_w_tile :height dash_h_tile))
+        (card_media))
+      (card_controls :width dash_w_cc :height dash_h)
+      (box :orientation "v" :space-evenly true :spacing dash_gap
+        (session_card :kind "lock")
+        (session_card :kind "sleep")
+        (session_card :kind "logout")
+        (session_card :kind "reboot")
+        (session_card :kind "poweroff"))
+    ))
+  )
+)
+
+;; --- profile ----------------------------------------------------------------
+
+;; `image` cannot be rounded by GTK CSS, so the picture is a background-image
+;; on a box (:style is reactive, so ~/.face can appear later).
+(defwidget card_profile [width height]
+  (box :class "dash_card dash_profile" :width width :height height
+    (box :orientation "v" :space-evenly false :spacing 18 :valign "center" :vexpand true
+      (box :class "dash_avatar" :width 160 :height 160 :halign "center"
+           :style {avatar_path != "" ? "background-image: url('${avatar_path}');" : ""}
+        (label :class "dash_avatar_fallback" :visible {avatar_path == ""} :text "󰀄"))
+      (label :class "dash_name" :text user_name :wrap true :justify "center")
+    )
+  )
+)
+
+;; --- clock ------------------------------------------------------------------
+
+(defwidget card_clock [width height]
+  (box :class "dash_card dash_clock" :width width :height height
+    (box :orientation "v" :space-evenly false :spacing 2 :valign "center" :vexpand true
+      (label :class "dash_time" :text {formattime(EWW_TIME, "%H:%M")})
+      (label :class "dash_weekday" :text {formattime(EWW_TIME, "%A")})
+      (label :class "dash_date" :text {formattime(EWW_TIME, "%d %B")})
+    )
+  )
+)
+
+;; --- weather ----------------------------------------------------------------
+
+(defwidget card_weather [width height]
+  (box :class "dash_card dash_weather" :width width :height height
+    (box :orientation "v" :space-evenly false :spacing 2 :valign "center" :vexpand true
+      (label :class "dash_weather_icon ${weather.ok && weather.is_day == 0 ? "night" : "day"}"
+             :text {weather.ok ? weather.icon
+                    : weather.reason == "no-location" ? "󰍎" : "󰖝"})
+      (label :class "dash_weather_temp ${weather.stale ? "stale" : ""}"
+             :text {weather.ok ? "${weather.temp}°" : "—"})
+      (label :class "dash_weather_text"
+             :text {weather.ok ? weather.text
+                    : weather.reason == "no-location" ? "no location" : "offline"})
+    )
+  )
+)
+
+;; --- media ------------------------------------------------------------------
+
+;; Fixed footprint either way: the placeholder keeps the grid shape when no
+;; player is around. playerctld makes `playerctl` follow the last active player.
+(defwidget card_media []
+  (box :class "dash_card dash_media" :vexpand true
+    (box :visible {!player.active}
+         :orientation "v" :space-evenly false :spacing 8 :valign "center" :halign "center" :hexpand true
+      (label :class "dash_media_placeholder_icon" :text "󰝚")
+      (label :class "dash_media_placeholder" :text "Nothing playing"))
+    (box :visible {player.active}
+         :orientation "h" :space-evenly false :spacing 20
+      (box :class "dash_art" :width 200 :height 200 :valign "center"
+           :style {player.art != "" ? "background-image: url('${player.art}');" : ""}
+        (label :class "dash_art_fallback" :visible {player.art == ""} :text "󰝚"))
+      (box :orientation "v" :space-evenly false :spacing 8 :valign "center" :hexpand true
+        (label :class "dash_media_title" :text {player.title}
+               :limit-width 24 :show-truncated true :halign "start" :xalign 0)
+        (label :class "dash_media_artist" :text {player.artist}
+               :limit-width 30 :show-truncated true :halign "start" :xalign 0)
+        (box :class "dash_media_controls" :orientation "h" :space-evenly true :halign "center" :spacing 24
+          (button :class "dash_media_btn" :tooltip "Previous" :onclick "~/.config/eww/scripts/dashboard media previous"
+            (label :class "dash_media_btn_icon" :text "󰒮"))
+          (button :class "dash_media_btn" :tooltip {player.status == "Playing" ? "Pause" : "Play"}
+                  :onclick "~/.config/eww/scripts/dashboard media play-pause"
+            (label :class "dash_media_btn_icon" :text {player.status == "Playing" ? "󰏤" : "󰐊"}))
+          (button :class "dash_media_btn" :tooltip "Next" :onclick "~/.config/eww/scripts/dashboard media next"
+            (label :class "dash_media_btn_icon" :text "󰒭")))
+        (box :orientation "h" :space-evenly false :spacing 10
+          (label :class "dash_media_time" :text {player_pos.pos})
+          (eventbox :hexpand true :valign "center"
+                    :onhover "eww update dash_hover=seek" :onhoverlost "eww update dash_hover=''"
+            (scale :class "dash_slider dash_slider_seek"
+                   :min 0 :max 101 :round-digits 0 :value {player_pos.pct}
+                   :timeout "1s"
+                   :onchange {dash_hover == "seek" ? "~/.config/eww/scripts/dashboard seek {}" : "true"}))
+          (label :class "dash_media_time" :text {player_pos.len}))
+      )
+    )
+  )
+)
+
+;; --- control centre ---------------------------------------------------------
+
+;; The label is the circle: its class flips, the button's never does.
+(defwidget dash_toggle [on icon_on icon_off cmd visible tip]
+  (button :class "dash_toggle" :visible visible :timeout "1s"
+          :tooltip tip
+          :onclick "~/.config/eww/scripts/dashboard ${cmd}"
+    (label :class "dash_toggle_icon ${on ? "on" : "off"}" :text {on ? icon_on : icon_off})
+  )
+)
+
+(defwidget dash_slider [kind icon value visible]
+  (box :class "dash_slider_row" :visible visible
+       :orientation "h" :space-evenly false :spacing 14
+    (label :class "dash_slider_icon dash_slider_icon_${kind}" :text icon)
+    (eventbox :hexpand true :valign "center"
+              :onhover "eww update dash_hover=${kind}" :onhoverlost "eww update dash_hover=''"
+      (scale :class "dash_slider dash_slider_${kind}"
+             :min 0 :max 101 :round-digits 0 :value value
+             :timeout "1s"
+             :onchange {dash_hover == kind ? "~/.config/eww/scripts/dashboard set ${kind} {}" : "true"}))
+  )
+)
+
+(defwidget card_controls [width height]
+  (box :class "dash_card dash_controls" :width width :height height
+    (box :orientation "v" :space-evenly false :spacing 28 :valign "center" :vexpand true
+      (box :class "dash_toggles" :orientation "h" :space-evenly true :spacing 10
+        (dash_toggle :on {radios.wifi} :icon_on "󰤨" :icon_off "󰤮" :cmd "radio wifi" :visible {radios.wifi_hw}
+                     :tip {!radios.wifi ? "WiFi: off" : radios.ssid != "" ? "WiFi: ${radios.ssid}" : "WiFi: not connected"})
+        (dash_toggle :on {radios.bt}   :icon_on "󰂯" :icon_off "󰂲" :cmd "radio bt"   :visible {radios.bt_hw}
+                     :tip {radios.bt ? "Bluetooth" : "Bluetooth: off"})
+        (dash_toggle :on {volumemuted != "true"} :icon_on "󰕾" :icon_off "󰖁" :cmd "mute sink"   :visible true
+                     :tip {volumemuted == "true" ? "Sound: muted" : "Sound"})
+        (dash_toggle :on {!mic.muted}            :icon_on "󰍬" :icon_off "󰍭" :cmd "mute source" :visible true
+                     :tip {mic.muted ? "Microphone: muted" : "Microphone"}))
+      (box :class "dash_sliders" :orientation "v" :space-evenly false :spacing 22
+        (dash_slider :kind "volume"     :icon {volumemuted == "true" ? "󰖁" : "󰕾"} :value currentvolume :visible true)
+        (dash_slider :kind "mic"        :icon {mic.muted ? "󰍭" : "󰍬"}            :value {mic.volume}  :visible true)
+        (dash_slider :kind "brightness" :icon "󰃟"                                  :value brightness    :visible has_backlight))
+    )
+  )
+)
+
+;; --- session ----------------------------------------------------------------
+
+;; reboot/poweroff arm a 4 s confirm state in scripts/dashboard; the icon,
+;; colour and tooltip switch with it. lock/sleep close the dashboard first.
+(defwidget session_card [kind]
+  (button :class "dash_card dash_session dash_session_${kind}"
+          :width dash_s :height dash_s :timeout "1s"
+          :tooltip {dashboard_confirm == kind ? "Click again to ${kind == "poweroff" ? "power off" : kind}"
+                    : kind == "lock" ? "Lock"
+                    : kind == "sleep" ? "Sleep"
+                    : kind == "logout" ? "Log out"
+                    : kind == "reboot" ? "Reboot"
+                    : "Power off"}
+          :onclick "~/.config/eww/scripts/dashboard session ${kind}"
+    (label :class "dash_session_icon ${dashboard_confirm == kind ? "confirm" : kind}"
+           :text {dashboard_confirm == kind ? "󰀦"
+                  : kind == "lock" ? "󰌾"
+                  : kind == "sleep" ? "󰒲"
+                  : kind == "logout" ? "󰍃"
+                  : kind == "reboot" ? "󰜉"
+                  : "󰐥"})
+  )
+)

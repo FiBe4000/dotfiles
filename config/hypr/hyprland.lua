@@ -196,6 +196,20 @@ hl.layer_rule({
     ignore_alpha = 0.5, -- box is 0.8 alpha (blurred); its CSS shadow peaks at 0.30 (left sharp)
     animation = "fade",
 })
+-- Full-screen eww dashboard (config/eww/widgets/dashboard.yuck, namespace
+-- "eww-dashboard"): covers the whole monitor, bar included. Same frosted look
+-- as rofi: the bg0 backdrop at 0.4 alpha is blurred, cards are opaque on top.
+-- No ignore_alpha: every pixel is >= 0.4 alpha (card shadows composite OVER
+-- the backdrop and only raise it), so there is nothing to exclude from the
+-- blur; a value above 0.4 would un-blur the backdrop and leave a halo.
+-- "fade" (fadeLayersIn/Out above) — popin would scale a monitor-sized surface
+-- out of its centre.
+hl.layer_rule({
+    name  = "eww-dashboard",
+    match = { namespace = "eww-dashboard" },
+    blur = true,
+    animation = "fade",
+})
 
 ---------------
 ---- BINDS ----
@@ -252,17 +266,43 @@ end
 -- membership needed; the script keeps a 5% floor so the coarse 10% steps never
 -- land on a fully black panel, and is a no-op on machines without a backlight.
 -- repeating+locked: keys repeat when held and still work on the lock screen.
+-- submap_universal: keep working inside the "dashboard" submap below (a submap
+-- parks every bind that is not in it).
 local OSD = home .. "/.config/eww/scripts/osd"
-local BRIGHT_OPTS = { repeating = true, locked = true }
+local BRIGHT_OPTS = { repeating = true, locked = true, submap_universal = true }
 hl.bind("XF86MonBrightnessDown", dsp.exec_cmd(OSD .. " brightness down 10"), BRIGHT_OPTS)
 hl.bind("XF86MonBrightnessUp",   dsp.exec_cmd(OSD .. " brightness up 10"), BRIGHT_OPTS)
 hl.bind("SHIFT + XF86MonBrightnessDown", dsp.exec_cmd(OSD .. " brightness down 5"), BRIGHT_OPTS)
 hl.bind("SHIFT + XF86MonBrightnessUp",   dsp.exec_cmd(OSD .. " brightness up 5"), BRIGHT_OPTS)
 
 -- Audio (pamixer via the OSD script caps volume at 100%, unlike pactl +N%)
-hl.bind("XF86AudioLowerVolume", dsp.exec_cmd(OSD .. " volume down 5"))
-hl.bind("XF86AudioRaiseVolume", dsp.exec_cmd(OSD .. " volume up 5"))
-hl.bind("XF86AudioMute",        dsp.exec_cmd(OSD .. " volume mute"))
+local VOL_OPTS = { submap_universal = true }
+hl.bind("XF86AudioLowerVolume", dsp.exec_cmd(OSD .. " volume down 5"), VOL_OPTS)
+hl.bind("XF86AudioRaiseVolume", dsp.exec_cmd(OSD .. " volume up 5"), VOL_OPTS)
+hl.bind("XF86AudioMute",        dsp.exec_cmd(OSD .. " volume mute"), VOL_OPTS)
+
+-- Dashboard modal (eww namespace "eww-dashboard", toggled from the bar's Arch
+-- button). Escape closes it; the submap also parks every other bind (only
+-- submap_universal ones, like the OSD keys, keep working). Typing is kept out
+-- of the window underneath by the eww window itself: it is :focusable, so the
+-- layer holds keyboard focus and GTK drops the keys. No "catchall" here: it
+-- also catches mouse *presses* (releases pass), which killed slider drags
+-- while eww buttons -- release-driven -- kept working. The submap follows the
+-- layer's own lifecycle rather than the toggle script, so click-outside,
+-- `eww kill` (launch-eww-bars on a dock change) and an eww crash all leave
+-- it: no stuck submap.
+local DASHBOARD = home .. "/.config/eww/scripts/dashboard"
+hl.define_submap("dashboard", function()
+    hl.bind("Escape", dsp.exec_cmd(DASHBOARD .. " close"))
+end)
+hl.on("layer.opened", function(ls)
+    if ls.namespace == "eww-dashboard" then hl.dispatch(dsp.submap("dashboard")) end
+end)
+hl.on("layer.closed", function(ls)
+    if ls.namespace == "eww-dashboard" and hl.get_current_submap() == "dashboard" then
+        hl.dispatch(dsp.submap("reset"))
+    end
+end)
 
 -- Lid switch (disabled, kept from the hyprlang config)
 -- hl.bind("switch:Lid Switch", dsp.exec_cmd("hyprlock"), { locked = true })
@@ -292,6 +332,7 @@ if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
         hl.exec_cmd("uwsm app -- udiskie")
         hl.exec_cmd("pactl load-module module-switch-on-connect")
         hl.exec_cmd("uwsm app -- hypridle")
+        hl.exec_cmd("uwsm app -- playerctld daemon") -- media controls in the dashboard follow the last active player
         hl.exec_cmd(home .. "/.dotfiles/scripts/hypr-monitor-hotplug")
         hl.exec_cmd(home .. "/.dotfiles/scripts/launch-eww-bars")
         -- Keyboard-layout OSD. SUPER+SPACE is the xkb grp:win_space_toggle option
