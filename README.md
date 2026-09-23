@@ -39,3 +39,6 @@ v2.1.1
 
 v2.1.2
 * Changed to new icons that works with latest version of Nerd Fonts, new cursor name after recent update, changed to Fira Code Nerd Font in terminal.
+
+v2.2.0
+* Changed to playerctl as media player controls backend, tweaks in TLP and docking station setup, general bug fixes.
