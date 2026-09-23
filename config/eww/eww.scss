@@ -271,7 +271,21 @@ $transparent-bg0: rgba($bg0, 0.5);
   border-color: $bg3;
 
   >menuitem {
-    padding: 5px 5px;
+    padding: 6px 14px; // extra side padding keeps text clear of the rounded highlight
+    color: $fg2; // set explicitly so submenus don't inherit the hovered parent's $bg0
+
+    // Submenu indicator: the global `all: unset` strips GTK's arrow icon, so restore it
+    arrow {
+      -gtk-icon-source: -gtk-icontheme("pan-end-symbolic");
+      min-width: 16px;
+      min-height: 16px;
+      margin-left: 10px;
+      color: $fg1;
+    }
+
+    &:hover > arrow {
+      color: $bg0;
+    }
 
     &:disabled label {
       color: $bg3;
@@ -280,6 +294,7 @@ $transparent-bg0: rgba($bg0, 0.5);
     &:hover {
       background-color: $accent2;
       border-radius: 20px;
+      color: $bg0; // dark text for contrast on the light accent; labels inherit it
     }
   }
 
