@@ -4,6 +4,11 @@
 # When external monitors are connected: disables eDP-1
 # When all external monitors are removed: re-enables eDP-1
 # Respects manual toggle via /tmp/hypr-laptop-display-forced state file
+#
+# This is also the only thing that launches the eww bars: at startup (after the
+# initial eDP-1 decision, so the monitor indices the bars are placed by are
+# final) and on every change in the external monitor count. Nothing else should
+# run launch-eww-bars at login -- see the autostart note in hyprland.lua.
 
 SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 STATE_FILE="/tmp/hypr-laptop-display-forced"

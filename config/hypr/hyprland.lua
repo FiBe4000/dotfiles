@@ -333,8 +333,12 @@ if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
         hl.exec_cmd("pactl load-module module-switch-on-connect")
         hl.exec_cmd("uwsm app -- hypridle")
         hl.exec_cmd("uwsm app -- playerctld daemon") -- media controls in the dashboard follow the last active player
+        -- hypr-monitor-hotplug owns the eww bars: it launches them itself once it
+        -- has settled the eDP-1 state, and again on every dock change. Launching
+        -- launch-eww-bars directly here as well used to race that first run on a
+        -- docked login -- two launchers, two eww daemons, one orphaned with a bar
+        -- nobody could address, so one monitor ended up with two bars.
         hl.exec_cmd(home .. "/.dotfiles/scripts/hypr-monitor-hotplug")
-        hl.exec_cmd(home .. "/.dotfiles/scripts/launch-eww-bars")
         -- Keyboard-layout OSD. SUPER+SPACE is the xkb grp:win_space_toggle option
         -- (see input.lua), not a bind, so the only hook is Hyprland's activelayout
         -- event on socket2; this listener turns it into `osd layout <name>`.

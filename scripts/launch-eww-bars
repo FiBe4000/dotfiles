@@ -17,6 +17,16 @@
 # are restarted. Killing the daemon forces a fresh sync and brings all of them
 # back. Before the close loop was fixed to match live window ids, the bars were
 # never actually destroyed, which is why this never used to happen.
+#
+# Only one instance may run at a time. hypr-monitor-hotplug calls this from both
+# its socket2 handler and its poll loop, and two overlapping runs each `eww kill`
+# a daemon that may not have bound its socket yet, then each `eww open` forks a
+# daemon of its own. Both bind the same socket path; the loser keeps its bar but
+# can never be reached again, which is how a monitor ends up with two bars after
+# a docked login. Waiting on the lock is enough: the second run then sees the
+# wanted bars already up and exits.
+exec 9> "${XDG_RUNTIME_DIR:-/tmp}/launch-eww-bars.lock"
+flock 9
 
 # Monitor info: "<name> <eww index>", index = position in hyprctl's output.
 # Virtual outputs are dropped from the bar set (but not from the numbering):
@@ -60,9 +70,16 @@ wanted=$(cut -d' ' -f2- <<< "$desired" | grep -v '^$' | sort)
 # forks into the daemon, which inherits our stdout and never closes it, so a
 # caller that pipes this script's output would hang; eww keeps its own log in
 # ~/.cache/eww/ anyway.
+# `eww kill` only reaches the daemon that owns the socket path; pkill also
+# takes out any orphaned daemon from an earlier race so its bar disappears
+# instead of lingering under the new ones.
 eww kill 2>/dev/null
+pkill -x eww 2>/dev/null
+sleep 0.2
 
+# fd 9 is closed for eww so the forked daemon doesn't inherit the lock and hold
+# it for the rest of the session.
 while IFS=' ' read -r idx id; do
     [[ -n "$id" ]] || continue
-    eww open bar --screen "$idx" --id "$id" > /dev/null 2>&1
+    eww open bar --screen "$idx" --id "$id" > /dev/null 2>&1 9>&-
 done <<< "$desired"
