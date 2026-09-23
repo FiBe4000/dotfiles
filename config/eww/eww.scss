@@ -212,14 +212,16 @@ $transparent-bg0: rgba($bg0, 0.5);
 
 .power_button {
   all: unset;
-  transition: color 0.5s;
+  transition: color 0.5s, font-size 0.15s;
   color: $accent3;
   font-size: 25px;
+  min-width: 18px; // glyph width at the 30px hover size, so the segment doesn't widen
 }
 
 .power_button:hover {
-  transition: color 0.5s;
+  transition: color 0.5s, font-size 0.15s;
   color: $fg2;
+  font-size: 30px;
 }
 
 .clock {
