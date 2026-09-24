@@ -29,8 +29,10 @@ if [ "${1:-}" = position ]; then
     len=$(( len / 1000000 ))
     pct=0
     if [ "$len" -gt 0 ]; then
-        pct=$(( pos * 100 / len ))
-        [ "$pct" -gt 100 ] && pct=100
+        pct=$(( (pos * 100 + len - 1) / len ))
+        # pos is whole seconds and the player moves on before pos reaches len,
+        # so the last reading is often len-1: count that as finished.
+        [ "$pct" -gt 100 ] || [ $(( pos + 1 )) -ge "$len" ] && pct=100
     fi
     printf '{"pct":%d,"pos":"%s","len":"%s"}\n' "$pct" "$(fmt_time "$pos")" "$(fmt_time "$len")"
     exit 0

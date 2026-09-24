@@ -15,11 +15,24 @@
 ;; grid inside the backdrop eventbox would not work either: eww handlers let
 ;; button events bubble to ancestor eventboxes and every card click would close.
 ;;
-;; Sliders: GTK emits value-changed for programmatic :value updates too, so a
-;; listener echo would re-run :onchange. Values are integers (:round-digits 0,
-;; pamixer/brightnessctl set integers) so the echo equals what is shown and
-;; nothing fires, and :onchange only acts while the pointer is over that slider
-;; (dash_hover, set by the wrapping eventbox) so poll ticks never seek or set.
+;; Sliders: GTK emits value-changed for programmatic :value updates too, so every
+;; poll/listener tick that moves a slider re-runs its :onchange. Two gates keep
+;; those echoes from acting. :onchange is a no-op unless the pointer is over
+;; that slider (dash_hover, set and cleared by the wrapping eventbox). While it
+;; is, seek and brightness compare the value with a fresh readback and drop it
+;; when it matches -- seek within 1, as the position moves between the poll and
+;; the check -- so resting the pointer on a slider never seeks or sets. Volume
+;; and mic need no readback: pamixer reads back the integer it set, so the echo
+;; equals the shown value and GTK emits nothing; a change from elsewhere just
+;; re-sets the level the device already has.
+;;
+;; The hover enter/leave commands are separate processes with no ordering, so
+;; they share a flock and leave only clears dash_hover if it still names its
+;; own slider: a late leave from the previous slider cannot wipe the next one.
+;;
+;; :max 101: eww builds every scale on an Adjustment with page_size 1, and GTK
+;; caps the value at max - page_size. 101 makes 100 reachable, and value 100
+;; puts the knob and the fill at the far end of the trough.
 ;;
 ;; State classes live on leaf labels (see osd.yuck) and card sizes use
 ;; :width/:height, the outer allocation including the 3px border -- GTK CSS
@@ -162,8 +175,13 @@
 
 ;; --- media ------------------------------------------------------------------
 
-;; Fixed footprint either way: the placeholder keeps the grid shape when no
-;; player is around. playerctld makes `playerctl` follow the last active player.
+;; The tiles row above sets the card width, so the text column gets 264px
+;; (526 - 2*3 border - 2*18 padding - 200 art - 20 spacing). The mono font is
+;; 12px/char at 20px bold and 10px/char at 16px, and the ellipsis is one more
+;; char: 21+1 and 25+1 chars fit, so long titles cannot widen the card. Double-
+;; width (CJK) glyphs can still overflow it. The placeholder keeps the grid
+;; shape when no player is around. playerctld makes `playerctl` follow the
+;; last active player.
 (defwidget card_media []
   (box :class "dash_card dash_media" :vexpand true
     (box :visible {!player.active}
@@ -177,9 +195,9 @@
         (label :class "dash_art_fallback" :visible {player.art == ""} :text "󰝚"))
       (box :orientation "v" :space-evenly false :spacing 8 :valign "center" :hexpand true
         (label :class "dash_media_title" :text {player.title}
-               :limit-width 24 :show-truncated true :halign "start" :xalign 0)
+               :limit-width 21 :show-truncated true :halign "start" :xalign 0)
         (label :class "dash_media_artist" :text {player.artist}
-               :limit-width 30 :show-truncated true :halign "start" :xalign 0)
+               :limit-width 25 :show-truncated true :halign "start" :xalign 0)
         (box :class "dash_media_controls" :orientation "h" :space-evenly true :halign "center" :spacing 24
           (eventbox :cursor "pointer"
             (button :class "dash_media_btn" :tooltip "Previous" :onclick "~/.config/eww/scripts/dashboard media previous"
@@ -193,12 +211,14 @@
               (label :class "dash_media_btn_icon" :text "󰒭"))))
         (box :orientation "h" :space-evenly false :spacing 10
           (label :class "dash_media_time" :text {player_pos.pos})
-          (eventbox :hexpand true :valign "center" :cursor "pointer"
-                    :onhover "eww update dash_hover=seek" :onhoverlost "eww update dash_hover=''"
+          (eventbox :hexpand true :valign "center" :cursor "pointer" :timeout "1s"
+                    :onhover `flock "$XDG_RUNTIME_DIR/eww-dash-hover.lock" eww update dash_hover=seek`
+                    :onhoverlost `flock "$XDG_RUNTIME_DIR/eww-dash-hover.lock" sh -c '[ "$(eww get dash_hover)" = seek ] && eww update dash_hover= ; true'`
             (scale :class "dash_slider dash_slider_seek"
                    :min 0 :max 101 :round-digits 0 :value {player_pos.pct}
                    :timeout "1s"
-                   :onchange {dash_hover == "seek" ? "~/.config/eww/scripts/dashboard seek {}" : "true"}))
+                   :onchange {dash_hover != "seek" ? "true"
+                              : "~/.config/eww/scripts/dashboard-player position | jq -e --argjson v {} '(.pct - $v) | fabs > 1' >/dev/null && ~/.config/eww/scripts/dashboard seek {}"}))
           (label :class "dash_media_time" :text {player_pos.len}))
       )
     )
@@ -222,12 +242,18 @@
   (box :class "dash_slider_row" :visible visible
        :orientation "h" :space-evenly false :spacing 14
     (label :class "dash_slider_icon dash_slider_icon_${kind}" :text icon)
-    (eventbox :hexpand true :valign "center" :cursor "pointer"
-              :onhover "eww update dash_hover=${kind}" :onhoverlost "eww update dash_hover=''"
+    (eventbox :hexpand true :valign "center" :cursor "pointer" :timeout "1s"
+              :onhover `flock "$XDG_RUNTIME_DIR/eww-dash-hover.lock" eww update dash_hover=${kind}`
+              :onhoverlost `flock "$XDG_RUNTIME_DIR/eww-dash-hover.lock" sh -c '[ "$(eww get dash_hover)" = ${kind} ] && eww update dash_hover= ; true'`
+      ;; brightnessctl's % readback of a `set N%` can differ from N (rounding to
+      ;; max_brightness steps, the 5% floor), so its echo is checked against a
+      ;; fresh readback (awk exits 1 when they are equal).
       (scale :class "dash_slider dash_slider_${kind}"
              :min 0 :max 101 :round-digits 0 :value value
              :timeout "1s"
-             :onchange {dash_hover == kind ? "~/.config/eww/scripts/dashboard set ${kind} {}" : "true"}))
+             :onchange {dash_hover != kind ? "true"
+                        : kind == "brightness" ? "brightnessctl -m | awk -F, -v v={} '{ exit ($4 + 0 == v) }' && ~/.config/eww/scripts/dashboard set brightness {}"
+                        : "~/.config/eww/scripts/dashboard set ${kind} {}"}))
   )
 )
 

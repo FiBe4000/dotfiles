@@ -299,34 +299,3 @@ $card-radius: 13px;
 .dash_session_poweroff:hover {
   background-color: rgba($red, 0.15);
 }
-
-// --- tooltips ---------------------------------------------------------------
-
-// Button hover text ("WiFi: <ssid>", "Reboot", ...). GTK tooltips are separate
-// popup windows of the same process, so the global `* { all: unset }` strips
-// them too and they need styling from scratch. Same card recipe, no shadow
-// (popups get no room for one).
-tooltip {
-  background-color: $bg1;
-  border-style: solid;
-  border-width: 3px;
-  border-color: $bg3;
-  border-radius: $card-radius;
-  padding: 6px 12px;
-  font-family: $mono-font;
-  font-size: 14px;
-  font-weight: bold;
-  color: $fg0;
-
-  // GTK sizes the popup from the label, so the room around the text has to
-  // come from the label's own padding, not the tooltip node's.
-  * {
-    background-color: $transparent;
-    color: $fg0;
-    padding: 2px 10px;
-  }
-
-  decoration {
-    background-color: $transparent;
-  }
-}
