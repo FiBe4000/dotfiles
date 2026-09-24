@@ -15,7 +15,7 @@
 #   Hyprland: hyprland.lua autostart runs `off`
 #   Plasma:   config/autostart/kded-gtkconfig-enable.desktop runs `on`
 #
-# NOTE: kded6 (KF 6.29) still hardcodes KSharedConfig::openConfig("kded5rc") for
+# NOTE: kded6 still hardcodes KSharedConfig::openConfig("kded5rc") for
 # the Module-* autoload groups; ~/.config/kded6rc is NOT read for this. Verify
 # with: qdbus6 org.kde.kded6 /kded org.kde.kded6.isModuleAutoloaded gtkconfig
 set -u
@@ -26,8 +26,11 @@ KDED_DEST=org.kde.kded6
 KDED_PATH=/kded
 KDED_IFACE=org.kde.kded6
 
+# True only when the name has an owner. `busctl list` also shows activatable
+# names, and a method call would D-Bus-activate kded6; `busctl status` only asks
+# the bus driver for the owner's credentials, so it never activates.
 kded_running() {
-    busctl --user --no-pager list 2>/dev/null | grep -q "^$KDED_DEST "
+    busctl --user status "$KDED_DEST" >/dev/null 2>&1
 }
 
 case "${1:-}" in

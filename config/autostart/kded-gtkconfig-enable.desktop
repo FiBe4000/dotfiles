@@ -2,9 +2,12 @@
 Type=Application
 Name=Re-enable kded6 gtkconfig
 Comment=Hyprland disables kded6's GTK sync module in the shared kded rc; turn it back on for Plasma
-# Desktop Exec does not expand ~ or $HOME itself, so go via sh. Plain ~ avoids
-# escape sequences that systemd's xdg-autostart-generator mis-parses.
+# Via sh because systemd's xdg-autostart-generator checks that the Exec binary
+# exists before expanding ~ and skips the entry when a ~/ program is not found;
+# ~ inside an argument is expanded fine.
 Exec=sh -c "~/.dotfiles/scripts/kded-gtkconfig on"
 OnlyShowIn=KDE;
 NoDisplay=true
+# Only plasma_session (startkderc systemdBoot=false) reads this; the systemd
+# generator used by default ignores it.
 X-KDE-autostart-phase=1

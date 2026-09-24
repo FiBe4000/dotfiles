@@ -112,7 +112,7 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/gtk-3.0/settings.ini                    $home/.config/gtk-3.0/settings.ini
   sudo -u $user ln -sfn $dotfilespath/config/gtk-4.0/settings.ini                    $home/.config/gtk-4.0/settings.ini
   # Plasma-only autostart: re-enables kded6's gtkconfig module that hyprland.lua
-  # turns off (shared kded6rc). Single link on purpose -- autostart/ holds
+  # turns off (shared kded5rc). Single link on purpose -- autostart/ holds
   # untracked per-machine entries too, so no link_dir here.
   sudo -u $user mkdir -p $home/.config/autostart
   sudo -u $user ln -sfn $dotfilespath/config/autostart/kded-gtkconfig-enable.desktop $home/.config/autostart/kded-gtkconfig-enable.desktop
