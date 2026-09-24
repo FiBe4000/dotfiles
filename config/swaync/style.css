@@ -85,10 +85,13 @@ notificationwindow, blankwindow {
 }
 
 .notification-row .notification-background {
-  /* Room for the card's shadow (extent ~30px down, ~20px sideways); the
-     control-center list clips at its bounds. Window widths in config.json
-     are +16px to keep the card itself 476px wide. */
-  padding: 8px 20px 20px 20px;
+  /* Transparent room for the card's shadow, which is clipped at this box's
+     bounds (GTK4 reach ~ offset + spread + blur): widest layer reaches 30px
+     down, ~22px right, ~18px left, ~10px up (the top/side tails are faint).
+     Applies to control-center rows too, so stacked cards there sit further
+     apart. config.json window widths are 516 = 476px card + 2 x 20px side
+     padding (was 500 with the old 12px side padding; +16px keeps the card size). */
+  padding: 8px 20px 30px 20px;
 }
 
 .notification-row .notification-background .notification {
@@ -278,9 +281,11 @@ notificationwindow, blankwindow {
   border: 3px solid @bg3;
   border-radius: var(--border-radius);
   box-shadow: var(--control-center-shadow);
-  /* Top matches the notification window's 8px, so the card lines up with the
-     popups; with fit-to-screen the bottom and right land 8px inside the window
-     border (12px gaps_out), and the shadow room ends exactly at the screen edge. */
+  /* Top matches the 8px top padding of .notification-background, so the card
+     lines up with the popups; with fit-to-screen the bottom and right land 8px
+     inside the window border (12px gaps_out). That leaves only 20px of shadow
+     room, while the widest layer reaches ~40px right and ~60px down, so the
+     shadow tail is clipped at the monitor edge (harmless, it's off-screen). */
   margin-top: 8px;
   margin-bottom: 20px;
   margin-right: 20px;
