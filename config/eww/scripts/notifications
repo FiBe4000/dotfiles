@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Stream swaync state as one JSON object per line: count, dnd, visible, inhibited.
+# Wrapped in a retry loop: `swaync-client -s` exits if swaync isn't up yet at
+# login or gets restarted, and deflisten doesn't respawn its command.
+while true; do
+  swaync-client -s 2>/dev/null
+  sleep 1
+done

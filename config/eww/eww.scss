@@ -196,7 +196,42 @@ $transparent-bg0: rgba($bg0, 0.5);
 }
 
 .volume-muted {
+  transition: color 0.5s;
   color: $red;
+}
+
+.volume_eventbox {
+  transition: color 0.5s;
+}
+
+// The muted label sets its own color, so it needs its own hover rule
+.volume_eventbox:hover,
+.volume_eventbox:hover .volume-muted {
+  color: $fg2;
+}
+
+.notifications {
+  all: unset;
+  color: $yellow;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $yellow;
+  padding-left: 10px;
+  padding-right: 10px;
+
+  &.dnd_on {
+    color: $red;
+    border-color: $red;
+  }
+}
+
+.notifications_eventbox {
+  transition: color 0.5s;
+}
+
+.notifications_eventbox:hover {
+  color: $fg2;
 }
 
 .battery {

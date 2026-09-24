@@ -1,5 +1,6 @@
 (deflisten currentvolume `scripts/getvol`)
 (deflisten volumemuted `scripts/getmute`)
+(deflisten notifications :initial `{"count": 0, "dnd": false}` `scripts/notifications`)
 ;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
 ;; follows the most recently active player, so no per-player bookkeeping here.
 
@@ -169,11 +170,12 @@
     :class "sensors"
     :orientation "h"
     :spacing 12
-    :space-evenly true
+    :space-evenly false
     (memory)
     (cpu_temperature)
     (cpu)
     (volume)
+    (notifications)
     (battery)
   )
 )
@@ -181,6 +183,7 @@
 (defwidget memory []
   (box
     :class "memory"
+    :tooltip "Memory ${round(EWW_RAM.used_mem / 1073741824, 1)} / ${round(EWW_RAM.total_mem / 1073741824, 1)} GiB"
     :orientation "h"
     :spacing 12
     :halign "center"
@@ -193,6 +196,7 @@
 (defwidget cpu_temperature []
   (box
     :class "cpu_temperature"
+    :tooltip "CPU ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
     :orientation "h"
     :spacing 12
     :halign "center"
@@ -205,6 +209,7 @@
 (defwidget cpu []
   (box
     :class "cpu"
+    :tooltip "CPU ${round(EWW_CPU.avg, 0)}% across ${arraylength(EWW_CPU.cores)} threads"
     :orientation "h"
     :spacing 12
     :halign "center"
@@ -221,6 +226,9 @@
     :space-evenly false
     :halign "center"
     (eventbox
+      :class "volume_eventbox"
+      :cursor "pointer"
+      :tooltip {volumemuted == "true" ? "Volume muted" : "Volume ${currentvolume}%"}
       :timeout "2s" ; osd script does several IPC round-trips; default 200ms only logs warnings
       :onscroll "~/.config/eww/scripts/osd volume {} 5"
       :onclick "~/.config/eww/scripts/osd volume mute"
@@ -239,9 +247,34 @@
   )
 )
 
+(defwidget notifications []
+  (box
+    :class "notifications ${notifications.dnd ? 'dnd_on' : ''}"
+    :orientation "h"
+    :space-evenly false
+    :halign "center"
+    (eventbox
+      :class "notifications_eventbox"
+      :cursor "pointer"
+      :tooltip "${notifications.count} notification${notifications.count == 1 ? '' : 's'}${notifications.dnd ? ' (do not disturb)' : ''}"
+      :onclick "swaync-client -t -sw"
+      :onrightclick "swaync-client -d -sw"
+      (box
+        :orientation "h"
+        :spacing 12
+        :space-evenly false
+        :halign "center"
+        (label :style "font-size: 20px;" :text {notifications.dnd ? "󰂛" : "󰂚"})
+        (label :text "${notifications.count}")
+      )
+    )
+  )
+)
+
 (defwidget battery []
   (box
     :class "battery"
+    :tooltip "Battery ${EWW_BATTERY.BAT0.capacity}% · ${EWW_BATTERY.BAT0.status}"
     :orientation "h"
     :spacing 12
     :halign "center"
