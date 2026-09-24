@@ -181,16 +181,19 @@
         (label :class "dash_media_artist" :text {player.artist}
                :limit-width 30 :show-truncated true :halign "start" :xalign 0)
         (box :class "dash_media_controls" :orientation "h" :space-evenly true :halign "center" :spacing 24
-          (button :class "dash_media_btn" :tooltip "Previous" :onclick "~/.config/eww/scripts/dashboard media previous"
-            (label :class "dash_media_btn_icon" :text "󰒮"))
-          (button :class "dash_media_btn" :tooltip {player.status == "Playing" ? "Pause" : "Play"}
-                  :onclick "~/.config/eww/scripts/dashboard media play-pause"
-            (label :class "dash_media_btn_icon" :text {player.status == "Playing" ? "󰏤" : "󰐊"}))
-          (button :class "dash_media_btn" :tooltip "Next" :onclick "~/.config/eww/scripts/dashboard media next"
-            (label :class "dash_media_btn_icon" :text "󰒭")))
+          (eventbox :cursor "pointer"
+            (button :class "dash_media_btn" :tooltip "Previous" :onclick "~/.config/eww/scripts/dashboard media previous"
+              (label :class "dash_media_btn_icon" :text "󰒮")))
+          (eventbox :cursor "pointer"
+            (button :class "dash_media_btn" :tooltip {player.status == "Playing" ? "Pause" : "Play"}
+                    :onclick "~/.config/eww/scripts/dashboard media play-pause"
+              (label :class "dash_media_btn_icon" :text {player.status == "Playing" ? "󰏤" : "󰐊"})))
+          (eventbox :cursor "pointer"
+            (button :class "dash_media_btn" :tooltip "Next" :onclick "~/.config/eww/scripts/dashboard media next"
+              (label :class "dash_media_btn_icon" :text "󰒭"))))
         (box :orientation "h" :space-evenly false :spacing 10
           (label :class "dash_media_time" :text {player_pos.pos})
-          (eventbox :hexpand true :valign "center"
+          (eventbox :hexpand true :valign "center" :cursor "pointer"
                     :onhover "eww update dash_hover=seek" :onhoverlost "eww update dash_hover=''"
             (scale :class "dash_slider dash_slider_seek"
                    :min 0 :max 101 :round-digits 0 :value {player_pos.pct}
@@ -206,10 +209,12 @@
 
 ;; The label is the circle: its class flips, the button's never does.
 (defwidget dash_toggle [on icon_on icon_off cmd visible tip]
-  (button :class "dash_toggle" :visible visible :timeout "1s"
-          :tooltip tip
-          :onclick "~/.config/eww/scripts/dashboard ${cmd}"
-    (label :class "dash_toggle_icon ${on ? "on" : "off"}" :text {on ? icon_on : icon_off})
+  (eventbox :cursor "pointer" :visible visible ; visible here, or the hidden toggle's slot stays in the row
+    (button :class "dash_toggle" :timeout "1s"
+            :tooltip tip
+            :onclick "~/.config/eww/scripts/dashboard ${cmd}"
+      (label :class "dash_toggle_icon ${on ? "on" : "off"}" :text {on ? icon_on : icon_off})
+    )
   )
 )
 
@@ -217,7 +222,7 @@
   (box :class "dash_slider_row" :visible visible
        :orientation "h" :space-evenly false :spacing 14
     (label :class "dash_slider_icon dash_slider_icon_${kind}" :text icon)
-    (eventbox :hexpand true :valign "center"
+    (eventbox :hexpand true :valign "center" :cursor "pointer"
               :onhover "eww update dash_hover=${kind}" :onhoverlost "eww update dash_hover=''"
       (scale :class "dash_slider dash_slider_${kind}"
              :min 0 :max 101 :round-digits 0 :value value
@@ -251,21 +256,22 @@
 ;; reboot/poweroff arm a 4 s confirm state in scripts/dashboard; the icon,
 ;; colour and tooltip switch with it. lock/sleep close the dashboard first.
 (defwidget session_card [kind]
-  (button :class "dash_card dash_session dash_session_${kind}"
-          :width dash_s :height dash_s :timeout "1s"
-          :tooltip {dashboard_confirm == kind ? "Click again to ${kind == "poweroff" ? "power off" : kind}"
-                    : kind == "lock" ? "Lock"
-                    : kind == "sleep" ? "Sleep"
-                    : kind == "logout" ? "Log out"
-                    : kind == "reboot" ? "Reboot"
-                    : "Power off"}
-          :onclick "~/.config/eww/scripts/dashboard session ${kind}"
-    (label :class "dash_session_icon ${dashboard_confirm == kind ? "confirm" : kind}"
-           :text {dashboard_confirm == kind ? "󰀦"
-                  : kind == "lock" ? "󰌾"
-                  : kind == "sleep" ? "󰒲"
-                  : kind == "logout" ? "󰍃"
-                  : kind == "reboot" ? "󰜉"
-                  : "󰐥"})
-  )
+  (eventbox :cursor "pointer"
+    (button :class "dash_card dash_session dash_session_${kind}"
+            :width dash_s :height dash_s :timeout "1s"
+            :tooltip {dashboard_confirm == kind ? "Click again to ${kind == "poweroff" ? "power off" : kind}"
+                      : kind == "lock" ? "Lock"
+                      : kind == "sleep" ? "Sleep"
+                      : kind == "logout" ? "Log out"
+                      : kind == "reboot" ? "Reboot"
+                      : "Power off"}
+            :onclick "~/.config/eww/scripts/dashboard session ${kind}"
+      (label :class "dash_session_icon ${dashboard_confirm == kind ? "confirm" : kind}"
+             :text {dashboard_confirm == kind ? "󰀦"
+                    : kind == "lock" ? "󰌾"
+                    : kind == "sleep" ? "󰒲"
+                    : kind == "logout" ? "󰍃"
+                    : kind == "reboot" ? "󰜉"
+                    : "󰐥"})
+    ))
 )

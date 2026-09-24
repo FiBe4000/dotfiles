@@ -79,10 +79,12 @@
     :class "power"
     :orientation "h"
     :space-evenly false
-    (button :class "power_button"
-            :timeout "1s" ; dashboard script does several eww IPC round-trips
-            :onclick "~/.config/eww/scripts/dashboard toggle"
-            "")
+    (eventbox :cursor "pointer" ; button has no :cursor property
+              :tooltip "Menu"
+      (button :class "power_button"
+              :timeout "1s" ; dashboard script does several eww IPC round-trips
+              :onclick "~/.config/eww/scripts/dashboard toggle"
+              ""))
   )
 )
 
@@ -102,6 +104,17 @@
         (eventbox
           :onclick "hyprctl dispatch workspace ${workspace.id} || hyprctl dispatch 'hl.dsp.focus({ workspace = ${workspace.id} })'"
           :class "workspace_eventbox"
+          :cursor "pointer"
+          :tooltip "${workspace.id == 1 ? "Web" :
+                      workspace.id == 2 ? "Terminals" :
+                        workspace.id == 3 ? "Code" :
+                          workspace.id == 4 ? "Mail" :
+                            workspace.id == 5 ? "Chat" :
+                              workspace.id == 6 ? "Music" :
+                                workspace.id == 7 ? "VM" :
+                                  workspace.id == 8 ? "Etc1" :
+                                    workspace.id == 9 ? "Etc2" :
+                                      workspace.id == 10 ? "Etc3" : "Workspace ${workspace.id}"}"
           (box
             :class "workspace_entry ${workspace.id == current_workspace ? "current" : ""} ${workspace.windows > 0 ? "occupied" : "empty"}"
             (label
