@@ -278,9 +278,12 @@ notificationwindow, blankwindow {
   border: 3px solid @bg3;
   border-radius: var(--border-radius);
   box-shadow: var(--control-center-shadow);
-  margin-top: 12px;
-  margin-bottom: 24px;
-  margin-right: 24px;
+  /* Top matches the notification window's 8px, so the card lines up with the
+     popups; with fit-to-screen the bottom and right land 8px inside the window
+     border (12px gaps_out), and the shadow room ends exactly at the screen edge. */
+  margin-top: 8px;
+  margin-bottom: 20px;
+  margin-right: 20px;
 }
 
 .control-center .control-center-list-placeholder {
