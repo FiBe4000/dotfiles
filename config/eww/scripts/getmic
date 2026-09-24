@@ -3,8 +3,9 @@
 # Print the default source's volume/mute as one JSON line, then re-print on
 # any source change. Same retry-loop shape as getvol/getmute: if `pactl
 # subscribe` exits (audio server not up yet at login, connection dropped),
-# re-emit and re-subscribe instead of letting the deflisten die. "source"
-# also matches source-output events; that only re-emits the same value.
+# re-emit and re-subscribe instead of letting the deflisten die. "server"
+# catches a new default source (`Event 'change' on server`); "source" also
+# matches source-output events. Extra matches only re-emit the same value.
 
 set -u
 
@@ -19,7 +20,7 @@ emit() {
 
 while true; do
     emit
-    pactl subscribe 2>/dev/null | grep --line-buffered "source" | while read -r _; do
+    pactl subscribe 2>/dev/null | grep --line-buffered -E "source|server" | while read -r _; do
         emit
     done
     sleep 2

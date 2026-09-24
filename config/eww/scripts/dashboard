@@ -14,9 +14,9 @@
 # feed the widgets (getvol, getmic, dashboard-radios, ...) -- writing a slider's
 # own var from here would re-trigger its :onchange (see the yuck header).
 #
-# `open` seeds every var first so the first frame is never stale, and only
-# opens if the window is not already up (`eww open` on an open instance
-# recreates the surface and replays the fade). `close` is idempotent and safe
+# `open` is a no-op while the window is up (`eww open` on an open instance
+# recreates the surface and replays the fade); otherwise it seeds every var
+# first so the first frame is never stale. `close` is idempotent and safe
 # from anywhere: the backdrop click, the Hyprland Escape bind of the
 # "dashboard" submap, and the session actions. Hyprland enters/leaves that
 # submap on the layer's own open/close events, so nothing here touches it.
@@ -48,8 +48,9 @@ run() {
 }
 
 focused_idx() {
-    # eww --screen takes a monitor index; hyprctl order matches GDK order
-    # (same assumption as launch-eww-bars and osd). `// 0`: no monitor focused.
+    # eww --screen takes a GDK monitor index. Assumes hyprctl lists monitors in
+    # GDK's order -- unverified, inherited from launch-eww-bars (osd makes the
+    # same assumption). `// 0`: no monitor focused.
     hyprctl monitors -j | jq -r 'map(.focused) | index(true) // 0'
 }
 
@@ -67,24 +68,32 @@ do_close() {
     eww update dashboard_open=false dashboard_confirm="" dash_hover=""
 }
 
-do_open() {
-    local backlight=false bright
+# Seed every var, then open on the focused monitor. Caller holds the lock and
+# has checked is_open.
+open_window() {
+    local backlight=false bright idx
     [ -n "$(ls /sys/class/backlight 2>/dev/null)" ] && backlight=true
     bright=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d %)
     [[ $bright =~ ^[0-9]+$ ]] || bright=0
     eww update dashboard_open=true dashboard_confirm="" dash_hover="" \
         has_backlight="$backlight" brightness="$bright" \
-        radios="$("$here/dashboard-radios")"
-    # Serialise the check-then-open: two quick clicks must not both see
-    # "not open" and recreate the surface.
+        radios="$("$here/dashboard-radios")" 8>&-
+    idx=$(focused_idx)
+    eww open dashboard --screen "$idx" --pos "0x-$(reserved_top "$idx")" 8>&-
+}
+
+# Serialise check-then-act: two quick clicks must not both see "not open" and
+# recreate the surface (or open again right behind a close). The wait covers
+# the seeding above (dashboard-radios can take ~1 s with bluetoothd down).
+locked() {
     (
-        flock -w 1 8 || exit 0
-        if ! is_open; then
-            idx=$(focused_idx)
-            eww open dashboard --screen "$idx" --pos "0x-$(reserved_top "$idx")"
-        fi
+        flock -w 3 8 || exit 0
+        "$@"
     ) 8>"$rt/eww-dashboard.open.lock"
 }
+
+do_open()   { is_open || open_window; }
+do_toggle() { if is_open; then do_close; else open_window; fi }
 
 # First tap arms `dashboard_confirm`, a second tap on the same button within
 # CONFIRM_S runs the command. One flock-guarded resetter at a time; a tap on the
@@ -116,10 +125,10 @@ pct_arg() {
 
 case "$cmd" in
     toggle)
-        if is_open; then do_close; else do_open; fi
+        locked do_toggle
         ;;
     open)
-        do_open
+        locked do_open
         ;;
     close)
         do_close
@@ -138,7 +147,11 @@ case "$cmd" in
     radio)
         case "$arg" in
             wifi)
-                if [ "$(nmcli -t -f WIFI g 2>/dev/null)" = enabled ]; then
+                # Hard-blocked (WIFI-HW disabled) shows as off; flipping the soft state would change nothing visible.
+                wifi_state=$(nmcli -t -f WIFI-HW,WIFI g 2>/dev/null)
+                if [ "${wifi_state%%:*}" != enabled ]; then
+                    :
+                elif [ "${wifi_state#*:}" = enabled ]; then
                     nmcli radio wifi off
                 else
                     nmcli radio wifi on
@@ -146,10 +159,15 @@ case "$cmd" in
                 ;;
             bt)
                 # bluetoothctl, not rfkill: blueman/bluez own the adapter state.
-                if bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then
-                    bluetoothctl power off >/dev/null
+                # It waits forever for a missing bluetoothd, hence the timeouts;
+                # no controller in the output (daemon down, no adapter) = no-op.
+                bt_show=$(timeout 1 bluetoothctl show 2>/dev/null)
+                if ! grep -q 'Controller' <<< "$bt_show"; then
+                    :
+                elif grep -q 'Powered: yes' <<< "$bt_show"; then
+                    timeout 5 bluetoothctl power off >/dev/null
                 else
-                    bluetoothctl power on >/dev/null
+                    timeout 5 bluetoothctl power on >/dev/null
                 fi
                 ;;
             *) usage "radio wifi|bt" ;;

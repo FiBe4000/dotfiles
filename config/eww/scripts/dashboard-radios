@@ -9,25 +9,29 @@
 set -u
 
 wifi_hw=true wifi=false
-# "<WIFI-HW>:<WIFI>", e.g. "enabled:enabled" or "missing:enabled".
+# "<WIFI-HW>:<WIFI>", e.g. "enabled:enabled" or "missing:enabled". Both must
+# be enabled: "disabled:enabled" is a hard rfkill (the radio is off).
 case "$(nmcli -t -f WIFI-HW,WIFI g 2>/dev/null)" in
-    missing:*) wifi_hw=false ;;
-    *:enabled) wifi=true ;;
+    missing:*)       wifi_hw=false ;;
+    enabled:enabled) wifi=true ;;
 esac
 
 bt_hw=false bt=false
-# `show` prints nothing usable without a controller.
-bt_show=$(bluetoothctl show 2>/dev/null)
+# `show` prints nothing usable without a controller, and waits forever for a
+# bluetoothd that is not running: the timeout makes that "no bluetooth" too.
+bt_show=$(timeout 1 bluetoothctl show 2>/dev/null)
 if grep -q 'Controller' <<< "$bt_show"; then
     bt_hw=true
     grep -q 'Powered: yes' <<< "$bt_show" && bt=true
 fi
 
 # Connection name of the active wifi profile (normally the SSID). `con show`
-# reads NM state; `dev wifi list` could kick off a scan.
+# reads NM state; `dev wifi list` could kick off a scan. -t escapes ':' and
+# '\' in values with a backslash; the second sed undoes that.
 ssid=""
 if [ "$wifi" = true ]; then
-    ssid=$(nmcli -t -f NAME,TYPE con show --active 2>/dev/null | sed -n 's/:802-11-wireless$//p' | head -1)
+    ssid=$(nmcli -t -f NAME,TYPE con show --active 2>/dev/null | sed -n 's/:802-11-wireless$//p' | head -1 \
+        | sed 's/\\\(.\)/\1/g')
 fi
 
 jq -cn --argjson wifi "$wifi" --argjson wifi_hw "$wifi_hw" \

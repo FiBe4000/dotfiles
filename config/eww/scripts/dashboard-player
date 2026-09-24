@@ -42,42 +42,91 @@ inactive='{"active":false,"player":"","status":"Stopped","title":"","artist":"",
 
 cache_art() {
     # $1: mpris:artUrl (file:// or http(s)://). Prints the local path or "".
-    local url=$1 file src
+    # Written to a temp file and renamed only on success, so an interrupted
+    # copy/download never leaves a truncated file that passes the -s check.
+    local url=$1 file tmp src ok=false
     [ -n "$url" ] || { echo ""; return; }
     file="$art_dir/$(printf %s "$url" | md5sum | cut -c1-16).img"
-    if [ ! -s "$file" ]; then
+    if [ -s "$file" ]; then
+        touch "$file"   # most recently used, for the pruning below
+    else
+        tmp="$file.tmp.$$"
         case "$url" in
             file://*)
+                # Undo percent-encoding. Backslashes are doubled first so %b
+                # only decodes the \xHH made from %HH, nothing else in the path.
                 src=${url#file://}
-                src=$(printf '%b' "${src//%/\\x}")   # undo percent-encoding
-                cp -f "$src" "$file" 2>/dev/null
+                src=${src//\\/\\\\}
+                src=$(printf '%b' "${src//%/\\x}" 2>/dev/null)
+                cp -f "$src" "$tmp" 2>/dev/null && ok=true
                 ;;
             http://*|https://*)
-                curl -sf -m 10 -o "$file" "$url" 2>/dev/null
+                curl -sf -m 10 -o "$tmp" "$url" 2>/dev/null && ok=true
                 ;;
         esac
+        if [ "$ok" = true ] && [ -s "$tmp" ]; then
+            mv -f "$tmp" "$file"
+            # Keep the 20 most recently used; names are hex, so ls is safe.
+            ls -t "$art_dir"/*.img 2>/dev/null | tail -n +21 | xargs -r rm -f --
+        else
+            rm -f "$tmp"
+        fi
     fi
     if [ -s "$file" ]; then echo "$file"; else echo ""; fi
 }
 
+real_name() {
+    # $1: {{playerName}}. Through playerctld that is "playerctld" itself; the
+    # player it forwards to is the first of its PlayerNames (most recently
+    # active first), e.g. "org.mpris.MediaPlayer2.firefox.instance_1_84" ->
+    # "firefox", matching what {{playerName}} gives for a direct connection.
+    local n
+    [ "$1" = playerctld ] || { echo "$1"; return; }
+    n=$(timeout 1 busctl --user --json=short get-property org.mpris.MediaPlayer2.playerctld \
+            /org/mpris/MediaPlayer2 com.github.altdesktop.playerctld PlayerNames 2>/dev/null \
+        | jq -r '.data[0] // empty' 2>/dev/null)
+    n=${n#org.mpris.MediaPlayer2.}
+    n=${n%%.*}
+    echo "${n:-$1}"
+}
+
 mkdir -p "$art_dir"
+# Temp files of a copy/download cut short by a kill (the prune only sees *.img).
+rm -f "$art_dir"/*.tmp.*
 # Unit separator between fields: a whitespace IFS would collapse empty ones
-# (no artist) and shift everything after it.
-sep=$'\x1f'
-fmt="{{playerName}}${sep}{{status}}${sep}{{title}}${sep}{{artist}}${sep}{{mpris:artUrl}}${sep}{{mpris:length}}"
+# (no artist) and shift everything after it. Record separator at the end: a
+# newline inside a title or artist splits playerctl's output line, so lines
+# are joined until one ends with it (a bare empty line means no player).
+sep=$'\x1f' eor=$'\x1e'
+fmt="{{playerName}}${sep}{{status}}${sep}{{title}}${sep}{{artist}}${sep}{{mpris:artUrl}}${sep}{{mpris:length}}${eor}"
 
 while true; do
     echo "$inactive"
-    playerctl -F metadata -f "$fmt" 2>/dev/null | while IFS=$sep read -r name status title artist arturl length; do
+    rec=""
+    playerctl -F metadata -f "$fmt" 2>/dev/null | while IFS= read -r line; do
+        if [ -z "$rec" ] && [ -z "$line" ]; then
+            echo "$inactive"
+            continue
+        fi
+        rec+=$line
+        if [ "${line: -1}" != "$eor" ]; then
+            rec+=" "   # newline inside a field
+            continue
+        fi
+        rec=${rec%"$eor"}
+        IFS=$sep read -r name status title artist arturl length <<< "$rec"
+        rec=""
         if [ -z "$name" ]; then
             echo "$inactive"
             continue
         fi
+        name=$(real_name "$name")
         art=$(cache_art "$arturl")
         [[ $length =~ ^[0-9]+$ ]] || length=0
         jq -cn --arg name "$name" --arg status "$status" --arg title "$title" \
                --arg artist "$artist" --arg art "$art" --argjson length "$length" \
-               '{active:true,player:$name,status:$status,title:$title,artist:$artist,art:$art,length:$length}'
+               'def trim: gsub("^\\s+|\\s+$"; "");   # a joined-away newline at a field edge
+                {active:true,player:$name,status:$status,title:($title|trim),artist:($artist|trim),art:$art,length:$length}'
     done
     sleep 2
 done

@@ -17,8 +17,9 @@ cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/eww
 cache="$cache_dir/weather.json"
 
 fail() {
-    # $1: reason. Prefer the cached result, flagged stale.
-    if [ -s "$cache" ] && jq -e '.ok' "$cache" >/dev/null 2>&1; then
+    # $1: reason. Prefer the cached result, flagged stale -- except without a
+    # location: that cache is for coordinates that are gone, so say so.
+    if [ "$1" != no-location ] && [ -s "$cache" ] && jq -e '.ok' "$cache" >/dev/null 2>&1; then
         jq -c '.stale = true' "$cache"
     else
         jq -cn --arg reason "$1" \
@@ -33,7 +34,8 @@ num='^-?[0-9]+(\.[0-9]+)?$'
 
 url="https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code,is_day&timezone=auto"
 resp=$(curl -sf -m 10 "$url") || fail offline
-read -r temp code is_day < <(jq -r '.current | "\(.temperature_2m | round) \(.weather_code) \(.is_day)"' <<< "$resp" 2>/dev/null) || true
+# `+ 0`: round turns e.g. -0.4 into -0, which jq prints as "-0".
+read -r temp code is_day < <(jq -r '.current | "\(.temperature_2m | round + 0) \(.weather_code) \(.is_day)"' <<< "$resp" 2>/dev/null) || true
 [[ ${code:-} =~ ^[0-9]+$ ]] || fail offline
 
 # WMO weather codes -> text and Nerd Font (Material Design) glyph, day/night.
