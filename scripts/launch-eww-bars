@@ -15,16 +15,21 @@
 # a new host (libayatana-appindicator: nm-applet, gammastep) reappear — Electron
 # and Qt ones (teams-for-linux, outlook-for-linux, kgpg) stay gone until they
 # are restarted. Killing the daemon forces a fresh sync and brings all of them
-# back. Before the close loop was fixed to match live window ids, the bars were
-# never actually destroyed, which is why this never used to happen.
+# back.
 #
-# Only one instance may run at a time. hypr-monitor-hotplug calls this from both
-# its socket2 handler and its poll loop, and two overlapping runs each `eww kill`
-# a daemon that may not have bound its socket yet, then each `eww open` forks a
-# daemon of its own. Both bind the same socket path; the loser keeps its bar but
-# can never be reached again, which is how a monitor ends up with two bars after
-# a docked login. Waiting on the lock is enough: the second run then sees the
-# wanted bars already up and exits.
+# Only one instance may run at a time. `eww open` forks a daemon whenever none
+# is reachable, so two overlapping runs each `eww kill` a daemon that may not
+# have bound its socket yet and then each fork one of their own. Both bind the
+# same socket path; the loser keeps its bar but can never be reached again, so
+# one monitor ends up with two bars. That happened on docked login when the
+# Hyprland autostart and hypr-monitor-hotplug both ran this script; the hotplug
+# daemon is now the only launcher at login, and this lock serialises its
+# remaining callers (its own event/poll paths, hypr-toggle-laptop-display). A
+# run that waited on the lock usually finds the wanted bars already up and
+# exits; the daemon kill below clears any orphan left over from before the lock.
+#
+# Exit status: 1 if no usable monitors were found (nothing was changed), so a
+# caller can retry; 0 otherwise.
 exec 9> "${XDG_RUNTIME_DIR:-/tmp}/launch-eww-bars.lock"
 flock 9
 
@@ -38,7 +43,7 @@ monitor_data=$(hyprctl monitors -j | jq -r 'to_entries[]
     | "\(.value.name) \(.key)"')
 
 # Bail on a transient hyprctl/jq failure rather than tearing the bars down.
-[[ -n "$monitor_data" ]] || exit 0
+[[ -n "$monitor_data" ]] || exit 1
 
 # Check if any external monitors exist
 has_external=false
@@ -70,12 +75,36 @@ wanted=$(cut -d' ' -f2- <<< "$desired" | grep -v '^$' | sort)
 # forks into the daemon, which inherits our stdout and never closes it, so a
 # caller that pipes this script's output would hang; eww keeps its own log in
 # ~/.cache/eww/ anyway.
-# `eww kill` only reaches the daemon that owns the socket path; pkill also
-# takes out any orphaned daemon from an earlier race so its bar disappears
-# instead of lingering under the new ones.
+# `eww kill` only reaches the daemon that owns the socket path; the kill
+# below also takes out any orphaned daemon (see the lock note above) so its bar
+# disappears instead of lingering under the new ones. Then wait (up to 2s) for
+# them to actually exit -- a new `eww open` while the old one is still bound
+# would talk to the dying daemon -- and SIGKILL whatever is left.
+#
+# Daemons are told apart from short-lived clients (`eww update` from the osd
+# and dashboard scripts, `eww logs`) by their parent: a daemon forks away from
+# the `eww open` that spawned it and gets reparented to the systemd user
+# manager (subreaper) or PID 1, while a client's parent is the shell running it.
+eww_daemon_pids() {
+    local pid ppid
+    ps -C eww -o pid=,ppid= | while read -r pid ppid; do
+        if [[ "$ppid" == 1 || "$(ps -o comm= -p "$ppid")" == systemd ]]; then
+            echo "$pid"
+        fi
+    done
+}
+daemons=$(eww_daemon_pids)
 eww kill 2>/dev/null
-pkill -x eww 2>/dev/null
-sleep 0.2
+[[ -n "$daemons" ]] && kill $daemons 2>/dev/null
+for _ in {1..20}; do
+    alive=""
+    for pid in $daemons; do
+        kill -0 "$pid" 2>/dev/null && alive+=" $pid"
+    done
+    [[ -z "$alive" ]] && break
+    sleep 0.1
+done
+[[ -n "$alive" ]] && kill -KILL $alive 2>/dev/null
 
 # fd 9 is closed for eww so the forked daemon doesn't inherit the lock and hold
 # it for the rest of the session.
@@ -83,3 +112,4 @@ while IFS=' ' read -r idx id; do
     [[ -n "$id" ]] || continue
     eww open bar --screen "$idx" --id "$id" > /dev/null 2>&1 9>&-
 done <<< "$desired"
+exit 0

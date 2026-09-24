@@ -341,7 +341,8 @@ if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
         -- has settled the eDP-1 state, and again on every dock change. Launching
         -- launch-eww-bars directly here as well used to race that first run on a
         -- docked login -- two launchers, two eww daemons, one orphaned with a bar
-        -- nobody could address, so one monitor ended up with two bars.
+        -- nobody could address, so one monitor ended up with two bars. The flock
+        -- in launch-eww-bars now also serialises its remaining callers.
         hl.exec_cmd(home .. "/.dotfiles/scripts/hypr-monitor-hotplug")
         -- Keyboard-layout OSD. SUPER+SPACE is the xkb grp:win_space_toggle option
         -- (see input.lua), not a bind, so the only hook is Hyprland's activelayout

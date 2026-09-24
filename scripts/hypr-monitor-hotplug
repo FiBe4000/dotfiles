@@ -5,15 +5,19 @@
 # When all external monitors are removed: re-enables eDP-1
 # Respects manual toggle via /tmp/hypr-laptop-display-forced state file
 #
-# This is also the only thing that launches the eww bars: at startup (after the
-# initial eDP-1 decision, so the monitor indices the bars are placed by are
-# final) and on every change in the external monitor count. Nothing else should
-# run launch-eww-bars at login -- see the autostart note in hyprland.lua.
+# This is also what launches the eww bars at login -- after the initial eDP-1
+# decision has been applied, so `hyprctl monitors` no longer lists a disabled
+# eDP-1 and the indices the bars are placed by match the final layout -- and
+# again on every change in the external monitor count. Nothing else should run
+# launch-eww-bars at login (see the autostart note in hyprland.lua); the only
+# other caller is the manual hypr-toggle-laptop-display bind.
 
 SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 STATE_FILE="/tmp/hypr-laptop-display-forced"
 LAUNCH_BARS="$HOME/.dotfiles/scripts/launch-eww-bars"
 COUNT_FILE="/tmp/hypr-ext-monitor-count"
+BARS_PENDING="/tmp/hypr-eww-bars-pending"
+LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/hypr-monitor-hotplug.lock"
 PROFILE="$HOME/.dotfiles/scripts/hypr-display-profile.sh"
 
 # Excludes virtual outputs: on 0.56+, when the last real monitor disappears
@@ -40,7 +44,28 @@ hypr_set() {
     [[ "$out" == "ok" ]] || hyprctl eval "$1" > /dev/null
 }
 
+# Poll until `hyprctl monitors` no longer lists eDP-1, at most <tries> x 0.1s.
+wait_edp_gone() {
+    local tries=$1
+    while (( tries-- > 0 )); do
+        hyprctl monitors -j | jq -e '.[] | select(.name == "eDP-1")' > /dev/null 2>&1 || return 0
+        sleep 0.1
+    done
+    return 1
+}
+
+# The initial call, the poll loop and the socket2 listener each run this in
+# their own (sub)shell, so serialise them: otherwise two calls can both see the
+# old count and both reconfigure eDP-1 and relaunch the bars. fd 8 is closed
+# for launch-eww-bars so the eww daemon it forks can't inherit the lock.
 handle_monitors() {
+    {
+        flock 8
+        handle_monitors_locked
+    } 8> "$LOCK_FILE"
+}
+
+handle_monitors_locked() {
     local external_count
     external_count=$(count_external_monitors)
 
@@ -64,15 +89,38 @@ handle_monitors() {
         echo "Xft.dpi: $EDP_DPI" | xrdb -merge 2>/dev/null
     fi
 
-    # Skip the rest if count hasn't changed (avoids redundant hyprctl calls and bar restarts)
+    # Reconfigure only when the count has changed (avoids redundant hyprctl
+    # calls and bar restarts); otherwise just retry a still-pending bar launch.
     local last_count
     last_count=$(cat "$COUNT_FILE" 2>/dev/null)
-    [[ "$external_count" == "$last_count" ]] && return
-    echo "$external_count" > "$COUNT_FILE"
+    if [[ "$external_count" != "$last_count" ]]; then
+        reconfigure_edp "$external_count" || return
+        # Mark the bars pending before recording the count, so a launch that
+        # never happens is still retried by the next call.
+        touch "$BARS_PENDING"
+        echo "$external_count" > "$COUNT_FILE"
+    fi
 
+    [[ -f "$BARS_PENDING" ]] && launch_bars
+}
+
+# Apply the eDP-1/vrr state for <external count>. Returns 1 (count not
+# recorded, so the next call retries) if a docked eDP-1 disable hasn't taken
+# effect yet.
+reconfigure_edp() {
+    local external_count=$1
     if [[ "$external_count" -gt 0 ]]; then
         if [[ ! -f "$STATE_FILE" ]]; then
             hypr_set monitor "eDP-1,disable" -- 'hl.monitor({ output = "eDP-1", disabled = true })'
+            # The disable is applied asynchronously; until it lands eDP-1 is
+            # still index 0 in `hyprctl monitors`, and bars launched now would
+            # get --screen indices shifted by one. Give it up to 2s, else
+            # leave it to the next call (the disable is idempotent).
+            # Trade-off: if the disable never lands, every poll re-disables
+            # and the bars never launch. Deliberately no counter/fallthrough:
+            # bars launched with shifted indices would never be corrected,
+            # since launch-eww-bars only compares window ids, not screens.
+            wait_edp_gone 20 || return 1
         fi
         hypr_set misc:vrr 0 -- 'hl.config({ misc = { vrr = 0 } })'
     else
@@ -86,8 +134,60 @@ handle_monitors() {
             hyprctl reload
         fi
     fi
+    return 0
+}
 
-    [[ -x "$LAUNCH_BARS" ]] && "$LAUNCH_BARS"
+# launch-eww-bars exits 1 when it finds no usable monitors (e.g. eDP-1 not back
+# yet right after an undock). Retry a few times; if it still fails, leave
+# BARS_PENDING set so the next poll/event retries just this step -- never the
+# eDP-1 reconfigure or its reload fallback.
+launch_bars() {
+    [[ -x "$LAUNCH_BARS" ]] || { rm -f "$BARS_PENDING"; return; }
+    local tries=3
+    until "$LAUNCH_BARS" 8>&-; do
+        (( --tries > 0 )) || return
+        sleep 1
+    done
+    rm -f "$BARS_PENDING"
+}
+
+# Coalesce a burst of monitor events (a dock with two panels sends one per
+# panel) into one handle_monitors call: after the first event, keep reading
+# until no further monitor event has arrived for QUIET_MS (other socket2
+# events don't extend the wait), capped at MAX_MS in total. This replaces the
+# old fixed `sleep 1` settle delay. handle_monitors reads the live state, so
+# nothing about the final layout is lost by skipping the intermediate events.
+QUIET_MS=1000
+MAX_MS=4000
+
+now_ms() {
+    local t=${EPOCHREALTIME//[!0-9]/}   # microseconds; strips "." or locale ","
+    echo $(( t / 1000 ))
+}
+
+is_monitor_event() {
+    case "$1" in
+        monitoraddedv2\>\>*|monitorremoved\>\>*|monitoradded\>\>*) return 0 ;;
+    esac
+    return 1
+}
+
+# Returns 1 if the socket closed while draining.
+drain_monitor_events() {
+    local start quiet_until deadline now left line rc
+    start=$(now_ms)
+    quiet_until=$(( start + QUIET_MS ))
+    deadline=$(( start + MAX_MS ))
+    while :; do
+        now=$(now_ms)
+        (( quiet_until < deadline )) && left=$(( quiet_until - now )) || left=$(( deadline - now ))
+        (( left > 0 )) || return 0
+        IFS= read -r -t "$(( left / 1000 )).$(printf '%03d' $(( left % 1000 )))" line
+        rc=$?
+        (( rc > 128 )) && return 0          # quiet period elapsed
+        (( rc != 0 )) && return 1           # EOF: socket closed
+        is_monitor_event "$line" && quiet_until=$(( $(now_ms) + QUIET_MS ))
+    done
 }
 
 # Session leftovers: exec'd daemons survive logout, and the /tmp state files
@@ -98,7 +198,7 @@ handle_monitors() {
 for pid in $(pgrep -f "bash.*hypr-monitor-hotplug"); do
     [[ "$pid" == "$$" ]] || kill "$pid" 2>/dev/null
 done
-rm -f "$COUNT_FILE" "$STATE_FILE"
+rm -f "$COUNT_FILE" "$STATE_FILE" "$BARS_PENDING"
 
 # Handle initial state on startup (small delay to let monitors settle)
 sleep 2
@@ -114,12 +214,11 @@ trap 'kill "$POLL_PID" 2>/dev/null' EXIT
 # Listen for monitor events (fast path); reconnects if socket closes
 while true; do
     socat -u UNIX-CONNECT:"$SOCKET" - 2>/dev/null | while IFS= read -r line; do
-        case "$line" in
-            monitoraddedv2\>\>*|monitorremoved\>\>*|monitoradded\>\>*)
-                sleep 1
-                handle_monitors
-                ;;
-        esac
+        is_monitor_event "$line" || continue
+        drain_monitor_events
+        eof=$?
+        handle_monitors
+        (( eof == 0 )) || break
     done
     sleep 1
 done
