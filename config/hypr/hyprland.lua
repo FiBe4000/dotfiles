@@ -66,7 +66,7 @@ dofile(confdir .. "input.lua")
 -- ONLY cursor theme/size is duplicated here on purpose: it must be present at
 -- Hyprland level too, kept identical to uwsm/env (canonical). Do not add other
 -- hl.env() calls here — put non-cursor session env in config/uwsm/env instead.
-hl.env("XCURSOR_THEME", "Nordic-cursors")
+hl.env("XCURSOR_THEME", "breeze_cursors")
 hl.env("XCURSOR_SIZE", "24")
 
 -----------------------
@@ -108,8 +108,10 @@ hl.config({
         -- Soft drop shadow for depth. Shadows are on by default (range 4, which
         -- reads flat); this widens them. range = spread in px, render_power =
         -- falloff exponent (low = soft and airy, high = tight hug of the edge).
-        -- 20px shows in the 12px outer gaps without smearing the inner gaps into
-        -- grey. Geometry follows `rounding`, so corners match automatically.
+        -- 20px (plus the 2,6 offset) fills the 12px outer gaps; it is wider than
+        -- the 12px inner gap (gaps_in 6 x 2) too, so neighbouring shadows do tint
+        -- it, softly thanks to the low render_power. Geometry follows `rounding`,
+        -- so corners match automatically.
         -- Layer surfaces (eww, swaync) get no compositor shadow; they draw their
         -- own in GTK CSS from the same $shadow palette color.
         shadow = {
@@ -193,7 +195,9 @@ hl.layer_rule({
     name  = "eww-osd",
     match = { namespace = "eww-osd" },
     blur = true,
-    ignore_alpha = 0.5, -- box is 0.8 alpha (blurred); its CSS shadow peaks at 0.30 (left sharp)
+    -- box is 0.8 alpha (blurred); its two $shadow-osd layers (eww
+    -- styles/_shadows.scss) combine to ~0.37 just below it (left sharp)
+    ignore_alpha = 0.5,
     animation = "fade",
 })
 -- Full-screen eww dashboard (config/eww/widgets/dashboard.yuck, namespace
