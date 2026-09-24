@@ -1,9 +1,25 @@
 #!/bin/sh
 
 # Stream swaync state as one JSON object per line: count, dnd, visible, inhibited.
-# Wrapped in a retry loop: `swaync-client -s` exits if swaync isn't up yet at
-# login or gets restarted, and deflisten doesn't respawn its command.
+#
+# swaync-client builds its D-Bus proxy with auto-start enabled (with or without
+# -sw), so running it before swaync owns its name D-Bus-activates swaync.service
+# behind the back of `uwsm app -- swaync` in hyprland.lua, and the two instances
+# fight over the name at login. Wait until the name has an owner first; asking
+# the bus daemon itself (NameHasOwner) never activates anything.
+#
+# The outer loop restarts the subscription (behind the same owner check)
+# whenever `swaync-client -s` exits; deflisten doesn't respawn its command.
+has_owner() {
+  busctl --user call org.freedesktop.DBus /org/freedesktop/DBus \
+    org.freedesktop.DBus NameHasOwner s org.erikreider.swaync.cc 2>/dev/null \
+    | grep -q true
+}
+
 while true; do
+  until has_owner; do
+    sleep 0.5
+  done
   swaync-client -s 2>/dev/null
   sleep 1
 done

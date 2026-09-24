@@ -107,6 +107,14 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-right: 10px;
   font-size: 20px;
   box-shadow: $shadow-bar;
+
+  button {
+    transition: color 0.5s;
+  }
+
+  button:hover {
+    color: $fg2;
+  }
 }
 
 .media_info {
@@ -224,6 +232,12 @@ $transparent-bg0: rgba($bg0, 0.5);
     color: $red;
     border-color: $red;
   }
+
+  // An app holds a swaync inhibitor: popups are suppressed like DND
+  &.inhibited_on {
+    color: $orange;
+    border-color: $orange;
+  }
 }
 
 .notifications_eventbox {
@@ -250,11 +264,12 @@ $transparent-bg0: rgba($bg0, 0.5);
   transition: color 0.5s, font-size 0.15s;
   color: $accent3;
   font-size: 25px;
-  min-width: 18px; // glyph width at the 30px hover size, so the segment doesn't widen
+  // Reserve the glyph's width at the 30px hover size: the resting segment is
+  // that wide already, so the hover grow doesn't widen it further
+  min-width: 18px;
 }
 
 .power_button:hover {
-  transition: color 0.5s, font-size 0.15s;
   color: $fg2;
   font-size: 30px;
 }
@@ -307,9 +322,10 @@ $transparent-bg0: rgba($bg0, 0.5);
 
   >menuitem {
     padding: 6px 14px; // extra side padding keeps text clear of the rounded highlight
-    color: $fg2; // set explicitly so submenus don't inherit the hovered parent's $bg0
 
-    // Submenu indicator: the global `all: unset` strips GTK's arrow icon, so restore it
+    // Submenu indicator: `all: unset` resets the arrow's min-width/min-height to 0
+    // (and -gtk-icon-source to its initial value), so it renders at zero size.
+    // Restore the icon and give it a size again
     arrow {
       -gtk-icon-source: -gtk-icontheme("pan-end-symbolic");
       min-width: 16px;

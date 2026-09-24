@@ -1,6 +1,6 @@
 (deflisten currentvolume `scripts/getvol`)
 (deflisten volumemuted `scripts/getmute`)
-(deflisten notifications :initial `{"count": 0, "dnd": false}` `scripts/notifications`)
+(deflisten notifications :initial `{"count": 0, "dnd": false, "visible": false, "inhibited": false}` `scripts/notifications`)
 ;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
 ;; follows the most recently active player, so no per-player bookkeeping here.
 
@@ -154,15 +154,18 @@
     :orientation "h"
     :spacing 12
     :space-evenly false
-    (button :class "previous_button"
-            :onclick "playerctl previous"
-            "")
-    (button :class "play_pause_button"
-            :onclick "playerctl play-pause"
-            {player.status == "Playing" ? "" : ""})
-    (button :class "next_button"
-            :onclick "playerctl next"
-            "")
+    (eventbox :cursor "pointer" :tooltip "Previous"
+      (button :class "previous_button"
+              :onclick "playerctl previous"
+              ""))
+    (eventbox :cursor "pointer" :tooltip {player.status == "Playing" ? "Pause" : "Play"}
+      (button :class "play_pause_button"
+              :onclick "playerctl play-pause"
+              {player.status == "Playing" ? "" : ""}))
+    (eventbox :cursor "pointer" :tooltip "Next"
+      (button :class "next_button"
+              :onclick "playerctl next"
+              ""))
   )
 )
 
@@ -189,7 +192,10 @@
     (cpu)
     (volume)
     (notifications)
-    (battery)
+    ; The only EWW_BATTERY lookup: safe access (?.) yields "" instead of an
+    ; evaluation error on machines without a BAT0.
+    (battery :capacity {EWW_BATTERY?.BAT0?.capacity ?: ""}
+             :status {EWW_BATTERY?.BAT0?.status ?: ""})
   )
 )
 
@@ -242,7 +248,8 @@
       :class "volume_eventbox"
       :cursor "pointer"
       :tooltip {volumemuted == "true" ? "Volume muted" : "Volume ${currentvolume}%"}
-      :timeout "2s" ; osd script does several IPC round-trips; default 200ms only logs warnings
+      :timeout "2s" ; osd script does several IPC round-trips; past the timeout (default 200ms)
+                    ; eww logs "command ... timed out" and kills the sh running the command
       :onscroll "~/.config/eww/scripts/osd volume {} 5"
       :onclick "~/.config/eww/scripts/osd volume mute"
       (box
@@ -262,14 +269,14 @@
 
 (defwidget notifications []
   (box
-    :class "notifications ${notifications.dnd ? 'dnd_on' : ''}"
+    :class "notifications ${notifications.dnd ? 'dnd_on' : notifications.inhibited ? 'inhibited_on' : ''}"
     :orientation "h"
     :space-evenly false
     :halign "center"
     (eventbox
       :class "notifications_eventbox"
       :cursor "pointer"
-      :tooltip "${notifications.count} notification${notifications.count == 1 ? '' : 's'}${notifications.dnd ? ' (do not disturb)' : ''}"
+      :tooltip "${notifications.count} notification${notifications.count == 1 ? '' : 's'}${notifications.dnd ? ' (do not disturb)' : notifications.inhibited ? ' (inhibited)' : ''}"
       :onclick "swaync-client -t -sw"
       :onrightclick "swaync-client -d -sw"
       (box
@@ -277,35 +284,37 @@
         :spacing 12
         :space-evenly false
         :halign "center"
-        (label :style "font-size: 20px;" :text {notifications.dnd ? "󰂛" : "󰂚"})
-        (label :text "${notifications.count}")
+        (label :style "font-size: 20px;" :text {notifications.dnd ? "󰂛" : notifications.inhibited ? "󰂠" : "󰂚"})
+        (label :text {notifications.count > 99 ? "99+" : notifications.count})
       )
     )
   )
 )
 
-(defwidget battery []
+(defwidget battery [capacity status] ; "" when there is no BAT0 (desktop), see sensors
   (box
     :class "battery"
-    :tooltip "Battery ${EWW_BATTERY.BAT0.capacity}% · ${EWW_BATTERY.BAT0.status}"
+    :visible {capacity != ""}
+    :tooltip "Battery ${capacity}% · ${status}"
     :orientation "h"
     :spacing 12
     :halign "center"
     :space-evenly false
-    (label :text {EWW_BATTERY.BAT0.status == 'Charging' ? "󰂄" :
-                    EWW_BATTERY.BAT0.status == 'Full' ? "󰂄" :
-                      EWW_BATTERY.BAT0.capacity <= 5 ? "󱃍" :
-                        EWW_BATTERY.BAT0.capacity <= 10 ? "󰁺" :
-                          EWW_BATTERY.BAT0.capacity <= 20 ? "󰁻" :
-                            EWW_BATTERY.BAT0.capacity <= 30 ? "󰁼" :
-                              EWW_BATTERY.BAT0.capacity <= 40 ? "󰁽" :
-                                EWW_BATTERY.BAT0.capacity <= 50 ? "󰁾" :
-                                  EWW_BATTERY.BAT0.capacity <= 60 ? "󰁿" :
-                                    EWW_BATTERY.BAT0.capacity <= 70 ? "󰂀" :
-                                      EWW_BATTERY.BAT0.capacity <= 80 ? "󰂁" :
-                                        EWW_BATTERY.BAT0.capacity <= 90 ? "󰂂" :
-                                          EWW_BATTERY.BAT0.capacity <= 100 ? "󰁹" : ""})
-    (label :text "${EWW_BATTERY.BAT0.capacity}%")
+    (label :text {capacity == "" ? "" :
+                  status == 'Charging' ? "󰂄" :
+                    status == 'Full' ? "󰂄" :
+                      capacity <= 5 ? "󱃍" :
+                        capacity <= 10 ? "󰁺" :
+                          capacity <= 20 ? "󰁻" :
+                            capacity <= 30 ? "󰁼" :
+                              capacity <= 40 ? "󰁽" :
+                                capacity <= 50 ? "󰁾" :
+                                  capacity <= 60 ? "󰁿" :
+                                    capacity <= 70 ? "󰂀" :
+                                      capacity <= 80 ? "󰂁" :
+                                        capacity <= 90 ? "󰂂" :
+                                          capacity <= 100 ? "󰁹" : ""})
+    (label :text "${capacity}%")
   )
 )
 

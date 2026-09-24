@@ -1,7 +1,8 @@
-// Drop-shadow recipes shared by the bar and the OSD. Light source is the top,
-// slightly top-left, so shadows fall down and a bit right (matches
-// decoration.shadow.offset in hyprland.lua). Each recipe is two layers: a tight
-// ambient contact shadow plus a wider, offset key shadow for a soft falloff.
+// Drop-shadow recipes shared by the bar, the OSD and the dashboard. Light
+// source is the top, slightly top-left, so shadows fall down and a bit right
+// (matches decoration.shadow.offset in hyprland.lua). Each recipe is two
+// layers: a tight ambient contact shadow plus a wider, offset key shadow for a
+// soft falloff.
 //
 // GTK3 blur is NOT CSS-spec: it treats the blur value as the Gaussian sigma
 // (CSS uses sigma = blur/2), so a shadow only fades out fully ~2.5x the blur
