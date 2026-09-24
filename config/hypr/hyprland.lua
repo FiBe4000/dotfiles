@@ -250,8 +250,8 @@ hl.bind("SUPER + SHIFT + K", dsp.window.move({ direction = "up" }))
 hl.bind("SUPER + SHIFT + J", dsp.window.move({ direction = "down" }))
 
 -- Mouse drag / resize
-hl.bind("SUPER + mouse:272", dsp.window.drag(), { drag = true })
-hl.bind("SUPER + mouse:273", dsp.window.resize(), { drag = true })
+hl.bind("SUPER + mouse:272", dsp.window.drag(), { mouse = true })
+hl.bind("SUPER + mouse:273", dsp.window.resize(), { mouse = true })
 
 -- Workspaces: SUPER+N focuses on current monitor, SUPER+SHIFT+N moves silently
 for i = 1, 10 do
