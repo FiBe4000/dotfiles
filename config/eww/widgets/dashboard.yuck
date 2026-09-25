@@ -281,10 +281,16 @@
 
 ;; reboot/poweroff arm a 4 s confirm state in scripts/dashboard; the icon,
 ;; colour and tooltip switch with it. lock/sleep close the dashboard first.
+;;
+;; The shadow lives on the outer box, not the button: the eventbox (needed for
+;; :cursor) owns its own GdkWindow, sized to its allocation, and clips anything
+;; drawn inside it -- a shadow on the button only showed in its rounded corners,
+;; as a hard square. The plain box draws on the grid's window, like the other cards.
 (defwidget session_card [kind]
+  (box :class "dash_session_shell" :width dash_s :height dash_s
   (eventbox :cursor "pointer"
     (button :class "dash_card dash_session dash_session_${kind}"
-            :width dash_s :height dash_s :timeout "1s"
+            :timeout "1s"
             :tooltip {dashboard_confirm == kind ? "Click again to ${kind == "poweroff" ? "power off" : kind}"
                       : kind == "lock" ? "Lock"
                       : kind == "sleep" ? "Sleep"
@@ -299,5 +305,5 @@
                     : kind == "logout" ? "󰍃"
                     : kind == "reboot" ? "󰜉"
                     : "󰐥"})
-    ))
+    )))
 )

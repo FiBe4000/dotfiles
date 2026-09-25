@@ -246,8 +246,16 @@ $card-radius: 13px;
 
 // --- session ----------------------------------------------------------------
 
+// Shadow-only shell around each session button (see session_card in
+// dashboard.yuck): the eventbox inside it would clip a shadow on the button.
+.dash_session_shell {
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+}
+
 .dash_session {
   padding: 0;
+  box-shadow: none;
   transition: background-color 0.2s;
 }
 
