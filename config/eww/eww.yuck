@@ -15,7 +15,7 @@
   :namespace "eww-bar"
   :exclusive true
   :windowtype "dock"
-  :stacking "bg"
+  :stacking "fg"
   :focusable false
   :geometry (geometry
               :width "100%"
