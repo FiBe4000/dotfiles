@@ -156,6 +156,15 @@ hl.animation({ leaf = "workspaces", enabled = true, speed = 1,  bezier = "defaul
 -- (layersIn/Out govern the slide/popin position+size). 1 speed unit = 100 ms.
 hl.animation({ leaf = "fadeLayersIn",  enabled = true, speed = 2, bezier = "default" })
 hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 3, bezier = "default" })
+-- Layer slide/popin position (swaync control center's "slide right" below):
+-- 200 ms in to match swaync's own notification slide ("transition-time": 200).
+-- The control center surface spans the whole monitor, so its panel is only on
+-- screen for the first ~20% of the slide-out; "default" is fast at the start
+-- and left it gone in a frame. An ease-in curve (slow start) keeps the panel
+-- visibly travelling for most of the 300 ms instead.
+hl.curve("easeInCubic", { type = "bezier", points = { {0.32, 0}, {0.67, 0} } })
+hl.animation({ leaf = "layersIn",  enabled = true, speed = 2, bezier = "default" })
+hl.animation({ leaf = "layersOut", enabled = true, speed = 3, bezier = "easeInCubic" })
 
 ---------------
 ---- RULES ----
@@ -188,6 +197,10 @@ hl.layer_rule({
     match = { namespace = "swaync-control-center" },
     blur = true,
     ignore_alpha = 0.55, -- panels are 0.8-0.85 alpha; their CSS shadows peak ~0.5 and stay unblurred
+    -- Slide in from the right edge like the notifications (which swaync animates
+    -- itself, in GTK). The surface covers the monitor (layer-shell-cover-screen),
+    -- so the panel travels in from just off-screen.
+    animation = "slide right",
 })
 -- Volume/brightness OSD (config/eww/widgets/osd.yuck). Same blurred, translucent
 -- look as the notifications; "fade" animates both map and unmap.

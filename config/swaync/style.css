@@ -332,6 +332,24 @@ notificationwindow, blankwindow {
 .widget-title > button {
   margin-left: 8px;
   border-radius: var(--border-radius);
+  /* Flat glyph-style button like the eww bar: yellow (the bar's notification
+     colour) that brightens to fg2 on hover, no background change */
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  color: @yellow;
+  transition: color 0.3s;
+}
+
+.widget-title > button:hover {
+  background: none;
+  color: @fg2;
+}
+
+.widget-title > button:active {
+  background: none;
+  color: @fg0;
 }
 
 .widget-dnd label {
