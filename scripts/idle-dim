@@ -1,0 +1,37 @@
+#!/bin/bash
+# Idle dim/restore for hypridle, replacing `brightnessctl -s` / `-r`.
+#
+# brightnessctl keeps a single save slot, so a second `-s set 10` while the
+# panel is already dimmed overwrites the real level with 10 and every later
+# `-r` "restores" to dim. Restoring can also race the DPMS-on modeset, which
+# re-applies the panel's cached (dimmed) level after our write lands.
+#
+#   idle-dim dim      save the current level (only if not already dim), dim
+#   idle-dim restore  restore the saved level, re-applying it once DPMS-on settles
+
+DIM=10
+STATE="${XDG_RUNTIME_DIR:-/tmp}/idle-dim-brightness"
+
+case "$1" in
+dim)
+    cur=$(brightnessctl -q get) || exit 0
+    # Already at/below the dim level: keep the existing saved level, if any.
+    [ "$cur" -gt "$DIM" ] && echo "$cur" > "$STATE"
+    [ -f "$STATE" ] && brightnessctl -q set "$DIM"
+    ;;
+restore)
+    [ -f "$STATE" ] || exit 0
+    saved=$(<"$STATE")
+    brightnessctl -q set "$saved"
+    # DPMS-on can land after our write and put the cached dim level back.
+    for _ in 1 2 3 4; do
+        sleep 0.5
+        [ "$(brightnessctl -q get)" = "$saved" ] || brightnessctl -q set "$saved"
+    done
+    rm -f "$STATE"
+    ;;
+*)
+    echo "usage: $0 dim|restore" >&2
+    exit 1
+    ;;
+esac
