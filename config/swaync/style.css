@@ -134,7 +134,10 @@ notificationwindow, blankwindow {
   -gtk-icon-filter: none;
   -gtk-icon-size: var(--notification-icon-size);
   border-radius: 100px;
-  margin: 4px;
+  /* The text-box padding gives imageless notifications (image hidden) their
+     inset; the negative right margin cancels most of it next to an image so
+     the image->text gap stays 4px. */
+  margin: 4px -8px 4px 4px;
 }
 
 .notification-row .notification-background .notification .notification-default-action .notification-content .app-icon {
@@ -142,6 +145,13 @@ notificationwindow, blankwindow {
   -gtk-icon-size: var(--notification-app-icon-size);
   -gtk-icon-shadow: 0 1px 4px black;
   margin: 6px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box {
+  /* 12px top/bottom fills out one- and two-line text-only notifications;
+     a two-liner plus padding stays under the 72px image box, so image
+     notifications keep their height. */
+  padding: 12px 0 12px 12px;
 }
 
 .notification-row .notification-background .notification .notification-default-action .notification-content .text-box label {
