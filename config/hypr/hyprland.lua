@@ -134,6 +134,11 @@ hl.config({
         disable_hyprland_logo = true,
         disable_splash_rendering = true,
         vrr = 1,
+        -- Wake displays on input in Hyprland itself: hypridle's on-resume only
+        -- fires for its own dpms-off timeout, so a manual blank (Escape on the
+        -- lock screen, below) would otherwise stay black.
+        key_press_enables_dpms = true,
+        mouse_move_enables_dpms = true,
     },
 
     -- Don't bitmap-upscale XWayland surfaces on a fractional-scale eDP-1 panel —
@@ -320,6 +325,13 @@ hl.on("layer.closed", function(ls)
         hl.dispatch(dsp.submap("reset"))
     end
 end)
+
+-- Escape on the lock screen blanks the displays right away (Plasma-style)
+-- instead of waiting for hypridle's dpms timeout. non_consuming so Escape still
+-- reaches apps; the pidof guard makes it a no-op while unlocked. Fires on
+-- release so the key-up can't count as the wake press (key_press_enables_dpms).
+hl.bind("Escape", dsp.exec_cmd([[pidof -q hyprlock && hyprctl dispatch 'hl.dsp.dpms({ action = "off" })']]),
+        { locked = true, non_consuming = true, release = true, submap_universal = true })
 
 -- Lid switch (disabled, kept from the hyprlang config)
 -- hl.bind("switch:Lid Switch", dsp.exec_cmd("hyprlock"), { locked = true })
