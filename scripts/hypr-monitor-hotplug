@@ -126,7 +126,7 @@ reconfigure_edp() {
     else
         rm -f "$STATE_FILE"
         hypr_set monitor "eDP-1,${EDP_MODE},0x0,${EDP_SCALE}${EDP_EXTRA}" -- \
-            "hl.monitor({ output = \"eDP-1\", mode = \"${EDP_MODE}\", position = \"0x0\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA} })"
+            "hl.monitor({ output = \"eDP-1\", mode = \"${EDP_MODE}\", position = \"0x0\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA}, disabled = false })"
         hypr_set misc:vrr 1 -- 'hl.config({ misc = { vrr = 1 } })'
         # Verify eDP-1 actually came up; fall back to full reload if not
         sleep 1

@@ -32,8 +32,10 @@ if [[ "$edp_active" -gt 0 ]]; then
     notify-send "Laptop display" "Disabled"
 else
     # Currently off — enable it below the left monitor (per-machine scale)
+    # disabled = false is required on Lua sessions: hl.monitor() merges into
+    # the existing eDP-1 rule, so the earlier `disabled = true` would stick.
     hypr_set monitor "eDP-1,preferred,0x1440,${EDP_SCALE}${EDP_EXTRA}" -- \
-        "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x1440\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA} })"
+        "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x1440\", scale = \"${EDP_SCALE}\"${EDP_LUA_EXTRA}, disabled = false })"
     touch "$STATE_FILE"
     notify-send "Laptop display" "Enabled"
 fi
