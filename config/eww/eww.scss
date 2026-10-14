@@ -117,17 +117,14 @@ $transparent-bg0: rgba($bg0, 0.5);
   }
 }
 
-// Sits straight on the wallpaper (no segment pill). The color follows the
-// wallpaper behind it: scripts/bar-text-tone picks, per monitor, the theme
+// Text straight on the wallpaper (no segment pill): the media text on the
+// left, the Claude session list on the right. The color follows the wallpaper
+// behind it: scripts/bar-text-tone picks, per monitor and strip, the theme
 // color with the best contrast there and the yuck adds it as `tone-<name>`
 // (bg0 when nothing is known yet). `low-contrast` means even the best pick is
 // under 3:1 against a busy background, so the text gets an opposite-tone edge.
-.media_info {
-  all: unset;
+.on_wallpaper {
   color: $bg0;
-  padding-left: 10px;
-  padding-right: 10px;
-  transition: color 0.5s, opacity 0.5s;
 
   &.tone-bg0 { color: $bg0; }
   &.tone-bg1 { color: $bg1; }
@@ -142,9 +139,17 @@ $transparent-bg0: rgba($bg0, 0.5);
   &.low-contrast.tone-fg2 { text-shadow: $text-shadow-on-light; }
 }
 
+.media_info {
+  all: unset;
+  padding-left: 10px;
+  padding-right: 10px;
+  transition: color 0.5s, opacity 0.5s;
+}
+
 // Hover keeps the tone's lightness: dark text turns a darker accent, light
 // text a lighter one, so it stays readable on the same background.
-.media_info_eventbox:hover .media_info {
+.media_info_eventbox:hover .on_wallpaper,
+.claude_entry_eventbox:hover .on_wallpaper {
   color: $accent3;
 
   &.tone-fg0,
@@ -193,6 +198,113 @@ $transparent-bg0: rgba($bg0, 0.5);
   padding-bottom: 5px;
   padding-right: 15px;
   box-shadow: $shadow-bar;
+}
+
+// Attention blink for the Claude segment and session entries. GTK only
+// redraws while the animation runs, i.e. while something waits or errored.
+// Content straight on the wallpaper (media player, Claude session list)
+// fades instead of popping in; see bar_fade in eww.yuck. The animation runs
+// when the widget is mapped already shown (fade-in), the transition when
+// `shown` goes away (fade-out, unmapped by its owner afterwards).
+@keyframes bar-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bar_fade {
+  opacity: 0;
+  transition: opacity 250ms ease-in-out;
+
+  &.shown {
+    opacity: 1;
+    animation: bar-fade-in 250ms ease-in-out;
+  }
+}
+
+@keyframes claude-blink {
+  from { opacity: 1; }
+  to { opacity: 0.25; }
+}
+
+@mixin claude-blink {
+  animation: claude-blink 0.5s ease-in-out infinite alternate; // 1s period
+}
+
+.claude_segment {
+  all: unset;
+  color: $accent1;
+  border-style: solid;
+  border-width: 0px 0px 3px 0px;
+  border-radius: 0px 0px 20px 20px;
+  border-color: $accent1;
+  padding-left: 10px;
+  padding-right: 10px;
+
+  // error wins over waiting; the listener already resolves that into one class
+  &.alert-waiting {
+    color: $orange;
+    border-color: $orange;
+    @include claude-blink;
+  }
+
+  &.alert-error {
+    color: $red;
+    border-color: $red;
+    @include claude-blink;
+  }
+}
+
+.claude_eventbox {
+  transition: color 0.5s;
+}
+
+.claude_eventbox:hover {
+  color: $fg2;
+}
+
+// Session list (on the wallpaper, see .on_wallpaper): glyph above a tiny
+// project name, squeezed into the bar's height. idle keeps the wallpaper tone;
+// the other states set their own color.
+// Same 12px gap to the center pill as between the pills (box :spacing 12);
+// the gap to the sensors pill comes from right_modules' spacing. 2px down
+// centers the glyph + name pair on the pills' height.
+.claude_list {
+  padding-left: 12px;
+  padding-top: 2px;
+}
+
+// Scrolls (mouse wheel) when the sessions don't fit; GTK's overlay scrollbar
+// shows as a thin line under the entries while scrolling
+.claude_scroll scrollbar slider {
+  min-height: 2px;
+  border-radius: 2px;
+  background-color: $fg1;
+}
+
+.claude_entry {
+  transition: color 0.5s;
+
+  // State colors are mid-light, so on a light strip (dark tone picked) or a
+  // busy one they get the dark edge whatever the tone's own shadow would be.
+  &.working { color: $yellow; }
+  &.done { color: $green; }
+  &.waiting { color: $orange; @include claude-blink; }
+  &.error { color: $red; @include claude-blink; }
+
+  &.working, &.done, &.waiting, &.error {
+    &.tone-bg0, &.tone-bg1, &.low-contrast { text-shadow: $text-shadow-on-light; }
+  }
+}
+
+.claude_entry_icon {
+  font-size: 22px;
+}
+
+// Sized to fill the height the pills give the bar row, so the bar does not
+// grow.
+.claude_entry_name {
+  font-size: 11px;
+  margin-top: -3px; // pull the name up into the glyph's line gap
 }
 
 .memory {

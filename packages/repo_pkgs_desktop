@@ -31,9 +31,11 @@ git
 groff
 gucharmap
 htop
+inotify-tools
 intel-ucode
 ipset
 iptables-nft
+jq
 keepassxc
 kitty
 kitty-terminfo

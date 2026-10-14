@@ -67,7 +67,7 @@
 ;; Shared with the bar (eww.yuck). Keys match the script's `inactive` line;
 ;; `show` is false once the player is Stopped (the bar hides then).
 (deflisten player
-  :initial '{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"art":""}'
+  :initial '{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"mapped":false,"art":""}'
   "~/.config/eww/scripts/dashboard-player")
 (defpoll player_pos :interval "1s" :run-while {dashboard_open && player.active}
   :initial '{"pct":0,"pos":"0:00","len":"0:00"}'

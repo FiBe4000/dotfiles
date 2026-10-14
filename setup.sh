@@ -118,6 +118,13 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn $dotfilespath/config/autostart/kded-gtkconfig-enable.desktop $home/.config/autostart/kded-gtkconfig-enable.desktop
   sudo -u $user ln -sfn $dotfilespath/config/xdg-desktop-portal/hyprland-portals.conf $home/.config/xdg-desktop-portal/hyprland-portals.conf
 
+  # Claude Code: settings (hooks feeding the eww bar's session list), status
+  # line and hooks. Only these -- the rest of ~/.claude is app state.
+  sudo -u $user mkdir -p $home/.claude
+  sudo -u $user ln -sfn $dotfilespath/claude/settings.json                           $home/.claude/settings.json
+  sudo -u $user ln -sfn $dotfilespath/claude/statusline-command.sh                   $home/.claude/statusline-command.sh
+  link_dir $dotfilespath/claude/hooks $home/.claude/hooks
+
   # /etc/, general
 #  ln -sfn $dotfilespath/etc/pacman.conf                                              /etc/pacman.conf
   # PAM stack is copied, not symlinked: an auth config must not be writable from $HOME.

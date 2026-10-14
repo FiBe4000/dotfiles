@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# claude-list-toggle [close]: fade the bar's Claude session list in or out.
+#
+# Toggles on a click on the Claude segment; `close` (from scripts/claude-sessions
+# when the last session ends) only fades out and resets, so the next session
+# starts with the list closed.
+#
+# claude_list_open drives the CSS fade (bar_fade in eww.yuck), claude_list_mapped
+# whether the list exists. Closing unmaps only after the 250ms fade-out, so the
+# invisible list takes no clicks or tooltips; a reopen during the fade wins.
+
+if [ "$(eww get claude_list_open)" = true ]; then
+    eww update claude_list_open=false
+    sleep 0.3
+    [ "$(eww get claude_list_open)" = false ] && eww update claude_list_mapped=false
+elif [ "$1" = close ]; then
+    eww update claude_list_mapped=false
+else
+    eww update claude_list_mapped=true claude_list_open=true
+fi
+exit 0

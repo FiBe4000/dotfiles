@@ -3,11 +3,28 @@
 (deflisten notifications :initial `{"count": 0, "dnd": false, "visible": false, "inhibited": false}` `scripts/notifications`)
 ;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
 ;; follows the most recently active player, so no per-player bookkeeping here.
-;; Media text color per monitor, picked from the wallpaper behind it:
-;; {"<connector>": "tone-<color>[ low-contrast]"}. The script caches by
-;; wallpaper + monitor geometry, so the hourly re-check (which catches a
-;; wallpaper change) is a file read; `bar-text-tone --apply` updates at once.
+;; Color per monitor for text straight on the wallpaper, picked from the
+;; wallpaper behind it: {"<connector>": {"left": "tone-<color>[ low-contrast]",
+;; "right": ...}}. left is the strip behind the media text, right the one
+;; between the center pill and the sensors pill (Claude session list). The
+;; script caches by wallpaper + monitor geometry, so the hourly re-check (which
+;; catches a wallpaper change) is a file read; `bar-text-tone --apply` updates
+;; at once.
 (defpoll bar_tone :interval "1h" :initial "{}" "scripts/bar-text-tone")
+
+;; Claude Code sessions, from the hook state files under
+;; $XDG_RUNTIME_DIR/claude-sessions (inotify, no polling):
+;; {"count", "alert": "error" | "waiting" | "", "summary", "sessions": [{"id",
+;; "pid", "kitty", "project", "state", "label", "since", "detail", "prompt",
+;; "cwd", "mode"}, ...]}, oldest session first. alert is already resolved
+;; (error wins over waiting); summary is the prebuilt pill tooltip.
+(deflisten claude_sessions
+  ; slots pre-padded so the fixed entry slots never index past the end
+  :initial `{"count": 0, "alert": "", "summary": "", "sessions": [],
+             "slots": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}`
+  "scripts/claude-sessions")
+(defvar claude_list_open false)   ; shared by all bars; scripts/claude-list-toggle
+(defvar claude_list_mapped false) ; sets both, unmapping only after the fade-out
 
 (deflisten workspaces :initial "[]" "bash ~/.config/eww/scripts/get-workspaces")
 
@@ -53,8 +70,9 @@
     (box :class "right_modules"
          :orientation "h"
          :space-evenly false
-         :halign "end"
+         :halign "fill" ; claude_list's overlay takes the free room up to the center pill
          :spacing 12
+    (claude_list :monitor monitor)
     (sensors)
     (system_tray))
   )
@@ -144,16 +162,31 @@
   )
 )
 
+;; Fades in and out like the Claude session list (bar_fade); the listener
+;; keeps it mapped until the fade-out is done (player.mapped).
 (defwidget media_player [monitor]
-  (box
-    :class "media_player ${player.status == "Paused" ? "paused" : ""}"
-    :orientation "h"
-    :spacing 12
-    :space-evenly false
-    :visible {player.active && player.show}
-    (media_controls)
-    (media_info :monitor monitor)
+  (bar_fade :show {player.active && player.show}
+            :mapped {player.mapped ?: (player.active && player.show)}
+    (box
+      :class "media_player ${player.status == "Paused" ? "paused" : ""}"
+      :orientation "h"
+      :spacing 12
+      :space-evenly false
+      (media_controls)
+      (media_info :monitor monitor)
+    )
   )
+)
+
+;; Shared show/hide for the content straight on the wallpaper (media player,
+;; Claude session list): an opacity fade in CSS (.bar_fade). `show` drives the
+;; fade, `mapped` whether the widget exists at all; the owner keeps it mapped
+;; until a fade-out is done, so a hidden widget takes no clicks or tooltips.
+;; Not a GTK revealer: its first crossfade reveal was drawn into the buffer
+;; but never reached the screen (screenshots showed it, the monitor didn't).
+(defwidget bar_fade [show mapped]
+  (box :class "bar_fade ${show ? "shown" : ""}" :visible mapped
+    (children))
 )
 
 ;; Same glyphs and actions as the dashboard media card.
@@ -196,7 +229,7 @@
     :onclick "~/.config/eww/scripts/dashboard toggle"
     :onscroll "~/.config/eww/scripts/dashboard media {}"
     (box
-      :class "media_info ${bar_tone[monitor] ?: "tone-bg0"}"
+      :class "media_info on_wallpaper ${bar_tone[monitor]?.left ?: "tone-bg0"}"
       :orientation "h"
       (label :limit-width 500 :show-truncated true
              :text "${player.icon}  ${player.artist != "" ? "${player.artist} - " : ""}${player.title}"))
@@ -209,6 +242,7 @@
     :orientation "h"
     :spacing 12
     :space-evenly false
+    (claude)
     (memory)
     (cpu_temperature)
     (cpu)
@@ -218,6 +252,103 @@
     ; evaluation error on machines without a BAT0.
     (battery :capacity {EWW_BATTERY?.BAT0?.capacity ?: ""}
              :status {EWW_BATTERY?.BAT0?.status ?: ""})
+  )
+)
+
+;; Claude Code sessions: glyph + count in accent1, blinking orange while a
+;; session waits for an answer, blinking red when one errored. Click toggles
+;; the session list next to the pill.
+(defwidget claude []
+  (box
+    :class "claude_segment ${claude_sessions.alert != "" ? "alert-${claude_sessions.alert}" : ""}"
+    :visible {claude_sessions.count > 0}
+    :orientation "h"
+    :space-evenly false
+    :halign "center"
+    (eventbox
+      :class "claude_eventbox"
+      :cursor "pointer"
+      :tooltip {claude_sessions.summary}
+      :timeout "1s" ; claude-list-toggle waits out the fade before unmapping
+      :onclick "~/.config/eww/scripts/claude-list-toggle"
+      (box
+        :orientation "h"
+        :spacing 12
+        :space-evenly false
+        :halign "center"
+        (label :style "font-size: 20px;" :text "")
+        (label :text {claude_sessions.count})
+      )
+    )
+  )
+)
+
+;; One entry per session, oldest first, starting next to the center pill;
+;; new sessions are added on the right. Glyph on top, project name below,
+;; colored by state; idle entries take the wallpaper tone of the right-hand
+;; strip (like the media text). Click focuses the session's kitty window/tab.
+;;
+;; The list lives in an overlay over an empty, expanding box, so it adds
+;; nothing to the right side's size request: it gets the free room between the
+;; center pill and the sensors pill and never shrinks a pill. When the
+;; sessions don't fit, the list scrolls (mouse wheel) inside that room; the
+;; names don't ellipsize (in a scroll GTK hands labels their minimum width).
+;;
+;; Fixed slots instead of a `for`: eww rebuilds every child of a `for` when the
+;; list changes, and since a working session changes on every tool call, the
+;; entry under the mouse was destroyed and its tooltip closed. Slots only get
+;; their properties updated. The listener pads `slots` to 12 entries
+;; (scripts/claude-sessions SLOTS); empty ones are {} and stay hidden.
+(defwidget claude_list [monitor]
+  (overlay
+    :hexpand true
+    (box) ; sizes the overlay: whatever right_modules has left over
+    (scroll
+      :class "claude_scroll"
+      :visible {claude_list_mapped && claude_sessions.count > 0}
+      :hexpand true
+      :hscroll true
+      :vscroll false
+      ; the fade sits inside the scroll, on plain widgets only
+      (bar_fade :show claude_list_open :mapped true
+        (box
+          :class "claude_list"
+          :orientation "h"
+          :halign "start"
+          :spacing 10
+          :space-evenly false
+          (claude_entry :monitor monitor :s {claude_sessions.slots[0]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[1]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[2]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[3]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[4]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[5]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[6]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[7]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[8]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[9]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[10]})
+          (claude_entry :monitor monitor :s {claude_sessions.slots[11]}))
+      )
+    )
+  )
+)
+
+(defwidget claude_entry [monitor s]
+  (eventbox
+    :class "claude_entry_eventbox"
+    :visible {(s.id ?: "") != ""}
+    :cursor "pointer"
+    :tooltip {s.tooltip ?: ""} ; prebuilt by the listener (eww strings have no "\n")
+    :timeout "2s" ; claude-focus does hyprctl + kitty remote-control round-trips
+    :onclick "~/.config/eww/scripts/claude-focus ${s.pid ?: 0} ${s.kitty ?: 0}"
+    (box
+      :class "claude_entry on_wallpaper ${bar_tone[monitor]?.right ?: "tone-bg0"} ${s.state ?: ""}"
+      :orientation "v"
+      :space-evenly false
+      (label :class "claude_entry_icon" :text "")
+      (label :class "claude_entry_name" :show-truncated false ; no ellipsizing, the listener cuts .name to 16
+             :text {s.name ?: ""}))
   )
 )
 

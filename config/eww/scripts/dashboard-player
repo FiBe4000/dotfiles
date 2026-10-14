@@ -51,7 +51,7 @@ fi
 # Same keys as the deflisten :initial in widgets/dashboard.yuck. `art` stays
 # last: fetch_art swaps it in by replacing the $no_art tail of the line.
 no_art='"art":""}'
-inactive='{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"art":""}'
+inactive='{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"mapped":false,"art":""}'
 
 json_str() {
     # $1 -> JSON string body in REPLY. Control characters become spaces (only
@@ -131,6 +131,23 @@ emit() {
     fi
 }
 
+# The bar fades the player out (bar_fade in eww.yuck, 250ms) and only then
+# unmaps it, so a hidden player takes no clicks or tooltips: `show` drives the
+# fade, `mapped` the widget. When a shown track stops or goes away, the line
+# goes out first with show false and mapped still true (text intact), and
+# 0.3s later with mapped false. The dashboard keys on `active`.
+shown=false
+emit_inactive() {
+    local cur line
+    { IFS= read -r cur && IFS= read -r line; } 2>/dev/null < "$state"
+    if [ "${line#*'"show":true'}" != "$line" ]; then
+        emit "$cur" "${line/'"show":true'/'"show":false'}"
+        sleep 0.3
+    fi
+    shown=false
+    emit "" "$inactive"
+}
+
 fetch_art() {
     # Background job; its <file>.fetching marker already exists (see emit).
     # $1: URL, $2: cache file. Copies/downloads to a temp file renamed only on
@@ -180,11 +197,11 @@ sep=$'\x1f' eor=$'\x1e'
 fmt="{{playerName}}${sep}{{status}}${sep}{{title}}${sep}{{artist}}${sep}{{mpris:artUrl}}${sep}{{mpris:length}}${eor}"
 
 while true; do
-    emit "" "$inactive"
+    emit_inactive
     rec="" track="" real=""
     playerctl -F metadata -f "$fmt" 2>/dev/null | while IFS= read -r line; do
         if [ -z "$rec" ] && [ -z "$line" ]; then
-            emit "" "$inactive"
+            emit_inactive
             continue
         fi
         rec+=$line
@@ -196,7 +213,7 @@ while true; do
         IFS=$sep read -r name status title artist arturl length <<< "$rec"
         rec=""
         if [ -z "$name" ]; then
-            emit "" "$inactive"
+            emit_inactive
             continue
         fi
         # Only a new track (or player) can change who playerctld forwards to.
@@ -223,7 +240,13 @@ while true; do
         json_str "$status"; j_status=$REPLY
         trim "$title";  json_str "$REPLY"; j_title=$REPLY
         trim "$artist"; json_str "$REPLY"; j_artist=$REPLY
-        emit "$arturl" "{\"active\":true,\"player\":\"$j_name\",\"icon\":\"$icon\",\"status\":\"$j_status\",\"show\":$show,\"title\":\"$j_title\",\"artist\":\"$j_artist\",\"length\":$length,\"art\":\"$art\"}"
+        line="{\"active\":true,\"player\":\"$j_name\",\"icon\":\"$icon\",\"status\":\"$j_status\",\"show\":$show,\"title\":\"$j_title\",\"artist\":\"$j_artist\",\"length\":$length,\"mapped\":MAPPED,\"art\":\"$art\"}"
+        if [ "$shown" = true ] && [ "$show" = false ]; then
+            emit "$arturl" "${line/MAPPED/true}"
+            sleep 0.3
+        fi
+        shown=$show
+        emit "$arturl" "${line/MAPPED/$show}"
     done
     sleep 2
 done

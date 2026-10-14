@@ -68,6 +68,7 @@ gzip
 heimdall
 htop
 inetutils
+inotify-tools
 intel-gpu-tools
 intel-media-driver
 intel-ucode
@@ -75,6 +76,7 @@ iproute2
 iputils
 java-runtime-common
 jfsutils
+jq
 keepassxc
 kitty
 kodi-gbm

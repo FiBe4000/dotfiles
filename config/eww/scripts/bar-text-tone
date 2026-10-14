@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""Pick the bar's media text color per monitor from the wallpaper behind it.
+"""Pick the bar's text colors per monitor from the wallpaper behind them.
 
-    bar-text-tone           print {"<connector>": "<classes>", ...} (defpoll)
+    bar-text-tone           print {"<connector>": {"left": "<classes>",
+                                                   "right": "<classes>"}, ...}
     bar-text-tone --apply   same, pushed with `eww update bar_tone=...`
 
-The media text sits straight on the wallpaper (no pill) and windows never go
-under the bar's exclusive zone, so its background is the wallpaper image
-itself: no screenshots needed. For every monitor the hyprpaper image is fitted
-the way hyprpaper fits it, the strip the text can occupy is cut out, and each
+Two strips of the bar have text straight on the wallpaper (no pill): "left",
+the media text between the media controls and the center pill, and "right",
+the Claude session list between the center pill and the sensors pill.
+Windows never go under the bar's exclusive zone, so their background is the
+wallpaper image itself: no screenshots needed. For every monitor the hyprpaper
+image is fitted the way hyprpaper fits it, each strip is cut out, and each
 candidate theme color is scored by its WCAG contrast against the strip's
 pixels. The score is the 10th-percentile contrast, so a few bright clouds
 don't outvote a mostly dark strip. The winner becomes `tone-<color>`; when even
 that scores under 3:1 (busy wallpaper) `low-contrast` is added, which gives the
 text a soft opposite-tone shadow in eww.scss.
 
-Results are cached under $XDG_RUNTIME_DIR by wallpaper path + mtime, fit mode,
-monitor geometry and palette, so the hourly poll only reads small files; the
+Results are cached under $XDG_RUNTIME_DIR per strip by wallpaper path + mtime,
+fit mode, monitor geometry, strip geometry and palette, so the hourly poll only reads small files; the
 image is decoded only when one of those changes. Run with --apply after
 changing the wallpaper to update the bar right away.
 """
@@ -31,13 +34,19 @@ EWW_DIR = os.path.dirname(HERE)
 HYPRPAPER_CONF = os.path.expanduser("~/.config/hypr/hyprpaper.conf")
 CACHE_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "eww-bar-tone")
 
-# Strip the media text can occupy, in logical px from the monitor's top-left:
-# from where the label starts (bar margin + power, workspaces and media
-# controls pills + spacings + .media_info padding) to the left edge of the
-# centered date/clock pill. Measured from a screenshot of a 2560px scale-1 bar;
-# re-measure after resizing bar segments.
+# Strips with text on the wallpaper, in logical px, measured from a screenshot
+# of a 2560px scale-1 bar; re-measure after resizing bar segments.
+# left: from where the media label starts (bar margin + power, workspaces and
+# media controls pills + spacings + .media_info padding) to the left edge of
+# the centered date/clock pill (CENTER_HALF either side of the middle).
+# right: from the center pill's right edge to the sensors pill's left edge,
+# RIGHT_RESERVED from the monitor's right edge (bar margin + tray pill +
+# spacing + sensors pill). Measured with the Claude segment shown (the list is
+# only open when it is), a 5-icon tray, MUTED volume text and the battery
+# segment, so on most setups the pill starts further right than this.
 TEXT_LEFT = 548
 CENTER_HALF = 123
+RIGHT_RESERVED = 800
 TEXT_TOP, TEXT_BOTTOM = 4, 26
 
 CANDIDATES = ["bg0", "bg1", "fg0", "fg1", "fg2"]
@@ -82,8 +91,15 @@ def wallpapers():
     return out
 
 
-def strip_pixels(path, fit, mon):
-    """Pixels (r, g, b) of the wallpaper strip behind the media text."""
+def strip_span(side, logical_w):
+    """(x0, x1) of a text strip in logical px from the monitor's left edge."""
+    if side == "left":
+        return TEXT_LEFT, logical_w / 2 - CENTER_HALF
+    return logical_w / 2 + CENTER_HALF, logical_w - RIGHT_RESERVED
+
+
+def strip_pixels(path, fit, mon, side):
+    """Pixels (r, g, b) of the wallpaper behind one text strip."""
     import gi
     gi.require_version("GdkPixbuf", "2.0")
     from gi.repository import GdkPixbuf
@@ -95,7 +111,7 @@ def strip_pixels(path, fit, mon):
         mw, mh = mh, mw
     logical_w = mw / scale
     # Strip in physical monitor px.
-    x0, x1 = TEXT_LEFT * scale, (logical_w / 2 - CENTER_HALF) * scale
+    x0, x1 = (v * scale for v in strip_span(side, logical_w))
     y0, y1 = TEXT_TOP * scale, TEXT_BOTTOM * scale
     if x1 <= x0:
         return []
@@ -140,7 +156,7 @@ def pick(pixels, colors):
     return classes
 
 
-def tone(mon, papers, colors):
+def tone(mon, papers, colors, side):
     path, fit = papers.get(mon["name"]) or papers.get("") or (None, None)
     if not path:
         return DEFAULT
@@ -148,9 +164,12 @@ def tone(mon, papers, colors):
         mtime = os.stat(path).st_mtime_ns
     except OSError:
         return DEFAULT
+    # side in the key: entries cached before the right strip existed (keyed
+    # without it, plain strings) are simply never looked up again.
     key = hashlib.sha1(json.dumps(
         [path, mtime, fit, mon["width"], mon["height"], mon["scale"], mon.get("transform", 0),
-         colors, TEXT_LEFT, CENTER_HALF, TEXT_TOP, TEXT_BOTTOM]).encode()).hexdigest()[:16]
+         colors, side, TEXT_LEFT, CENTER_HALF, RIGHT_RESERVED,
+         TEXT_TOP, TEXT_BOTTOM]).encode()).hexdigest()[:16]
     cache = os.path.join(CACHE_DIR, key)
     try:
         with open(cache) as f:
@@ -158,7 +177,7 @@ def tone(mon, papers, colors):
     except OSError:
         pass
     try:
-        result = pick(strip_pixels(path, fit, mon), colors)
+        result = pick(strip_pixels(path, fit, mon, side), colors)
     except Exception:
         return DEFAULT
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -177,7 +196,8 @@ def main():
     except Exception:
         mons = []
     papers, colors = wallpapers(), palette()
-    result = {m["name"]: tone(m, papers, colors) for m in mons
+    result = {m["name"]: {side: tone(m, papers, colors, side) for side in ("left", "right")}
+              for m in mons
               if m["name"] != "FALLBACK" and not m["name"].startswith("HEADLESS-")}
     line = json.dumps(result, separators=(",", ":"))
     print(line)

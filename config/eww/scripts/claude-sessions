@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# deflisten claude_sessions: the running Claude Code sessions as one JSON line
+#
+#   {"count": N, "alert": "error"|"waiting"|"", "summary": "<project>:  <label>\n...",
+#    "sessions": [{id, pid, kitty, project, name, state, label, since: "HH:MM",
+#                  detail, prompt, cwd, mode, started, tooltip}, ...],
+#    "slots": <sessions padded with {} to $SLOTS entries>}
+#   (oldest first; tooltip is the list entry's prebuilt multi-line text)
+#
+# The state files are written by the Claude Code hook claude/hooks/session-state
+# (one per session, mv'd into place) and removed by it on SessionEnd or when
+# the claude process exits. Reprints on inotify events only, no polling, and
+# only when the output changed.
+
+dir=${CLAUDE_SESSIONS_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-sessions} # override for testing
+SLOTS=12 # must match the claude_entry slots in eww.yuck
+mkdir -p "$dir"
+shopt -s nullglob
+
+render() {
+  jq -c --argjson n "$SLOTS" '
+    sort_by(.started)
+    | map(.since = (.since | strflocaltime("%H:%M"))
+          # Bar label: cut here, the label itself must not ellipsize (in the
+          # scrolling list GTK would squeeze every name down to "…")
+          | .name = (.project | if length > 16 then .[0:15] + "…" else . end)
+          | .tooltip = ([
+              "\(.project) — \(.label) since \(.since)",
+              .detail,
+              (if (.prompt // "") != "" then "Prompt: \(.prompt)" else null end),
+              .cwd,
+              (if (.mode // "") != "" then "Mode: \(.mode)" else null end)
+            ] | map(select(. != null and . != "")) | join("\n")))
+    # Tooltips are monospace: pad the names so the states line up
+    | ((map(.project | length) | max) // 0) as $w
+    | {count: length,
+       alert: (if any(.state == "error") then "error"
+               elif any(.state == "waiting") then "waiting" else "" end),
+       summary: (map("\(.project):\(" " * ($w - (.project | length)))  \(.label)") | join("\n")),
+       sessions: .,
+       slots: ((. + [range($n) | {}])[0:$n])}
+  ' "$@"
+}
+
+last=
+emit() {
+  local files=("$dir"/*.json) out
+  if (( ${#files[@]} )); then
+    # A file can vanish between the glob and jq; its delete event reprints
+    out=$(render -s "${files[@]}" 2>/dev/null) || return
+  else
+    out=$(echo '[]' | render)
+    # Last session gone: fade the list out while it still shows the old
+    # entries, and reset it so the next session starts with it closed
+    [[ -n $last && $last != "$out" ]] && "${BASH_SOURCE%/*}/claude-list-toggle" close
+  fi
+  # A tool call rewrites the file twice with often the same content; an
+  # unchanged line would still make eww re-set every entry's properties
+  [[ $out == "$last" ]] && return
+  last=$out
+  printf '%s\n' "$out"
+}
+
+# Files left by a session whose waiter didn't get to clean up
+for f in "$dir"/*.json; do
+  pid=$(jq -r .pid "$f" 2>/dev/null)
+  [[ $pid =~ ^[0-9]+$ ]] && [[ $(cat /proc/"$pid"/comm 2>/dev/null) == claude ]] || rm -f "$f"
+done
+
+emit
+inotifywait -m -q -e moved_to,delete --format '%f' "$dir" | while read -r name; do
+  [[ $name == *.json ]] || continue
+  # One reprint per burst (a tool call is Pre + Post within milliseconds)
+  while read -r -t 0.05 _; do :; done
+  emit
+done

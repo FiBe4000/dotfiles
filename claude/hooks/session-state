@@ -1,0 +1,125 @@
+#!/bin/sh
+# Claude Code hook (all session events, see ../settings.json): keeps one state
+# file per interactive session for the eww bar's Claude segment.
+#
+#   $XDG_RUNTIME_DIR/claude-sessions/<session_id>.json
+#
+# Written to a temp file and mv'd into place, so the eww listener
+# (config/eww/scripts/claude-sessions) only ever sees whole files. One jq call
+# per event: tool events are the hot path.
+#
+# States: idle, working, waiting (permission, question, plan approval, MCP
+# input), done (until Claude's idle_prompt notification), error (StopFailure).
+# Known gap: Esc-interrupting a turn fires no hook, so the session reads
+# "working" until its next event.
+#
+# Headless `claude -p` runs get no file. The first time a session gets a file,
+# a detached `waitpid` (pidfd, no polling) removes it when the claude process
+# exits, so crashed or killed sessions disappear as well.
+
+dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-sessions
+input=$(cat)
+
+# The session id is a UUID, so a plain match is enough to name the file
+id=$(printf '%s' "$input" | sed -n 's/.*"session_id" *: *"\([0-9a-fA-F-]*\)".*/\1/p')
+[ -n "$id" ] || exit 0
+file=$dir/$id.json
+
+case $input in
+  *'"hook_event_name":"SessionEnd"'*|*'"hook_event_name": "SessionEnd"'*)
+    rm -f "$file"; exit 0 ;;
+esac
+
+# claude process: normally our parent, walk up in case a shell sits between
+pid=$PPID
+while [ "$pid" -gt 1 ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" != claude ]; do
+  read -r _ _ _ pid _ < /proc/"$pid"/stat || exit 0
+done
+[ "$pid" -gt 1 ] || exit 0
+
+new=0
+if [ ! -e "$file" ]; then
+  # Interactive sessions only: a terminal on stdin and no -p/--print
+  case $(readlink /proc/"$pid"/fd/0) in /dev/pts/*|/dev/tty*) ;; *) exit 0 ;; esac
+  tr '\0' '\n' < /proc/"$pid"/cmdline | grep -qxE -- '-p|--print' && exit 0
+  mkdir -p "$dir"
+  new=1
+fi
+
+# The kitty OS window the session runs in (each one is its own process), for
+# claude-focus. 0 when there is none.
+kitty=0
+if [ $new = 1 ]; then
+  k=$pid
+  while [ "$k" -gt 1 ]; do
+    [ "$(cat /proc/"$k"/comm 2>/dev/null)" = kitty ] && { kitty=$k; break; }
+    read -r _ _ _ k _ < /proc/"$k"/stat || break
+  done
+fi
+
+tmp=$file.tmp.$$
+printf '%s' "$input" | jq -c \
+  --slurpfile old "$( [ $new = 0 ] && echo "$file" || echo /dev/null )" \
+  --argjson pid "$pid" --argjson kitty "$kitty" \
+  --argjson now "$(date +%s)" \
+  --arg project "${CLAUDE_PROJECT_DIR:-}" '
+  def short($n): tostring | split("\n")[0] | if length > $n then .[0:$n - 1] + "…" else . end;
+  # "Bash: git status", "Edit: eww.scss", ...
+  def tool:
+    . as $e | (.tool_input // {}) as $t
+    | ($t.command // ($t.file_path // $t.notebook_path | if . then ($e | .cwd) as $c | ltrimstr(($c // "") + "/") else null end)
+       // $t.pattern // $t.url // $t.query // $t.description // $t.prompt // "") as $arg
+    | "\(.tool_name)\(if $arg != "" then ": " + ($arg | short(80)) else "" end)";
+  def question: (.tool_input.questions[0].question // "Question") | short(80);
+
+  ($old[0] // {}) as $o
+  | .hook_event_name as $ev
+  | ($o.state // "idle") as $was
+  | (
+      if $ev == "SessionStart" then
+        if .source == "compact" then null else {state: "idle", label: "idle", detail: ""} end
+      elif $ev == "UserPromptSubmit" then
+        {state: "working", label: "working", detail: "", prompt: (.prompt // "" | short(80))}
+      elif $ev == "PreToolUse" and .tool_name == "AskUserQuestion" then
+        {state: "waiting", label: "waiting for answer", detail: question}
+      elif $ev == "PreToolUse" and .tool_name == "ExitPlanMode" then
+        {state: "waiting", label: "waiting for plan approval", detail: "Plan ready for review"}
+      elif $ev == "PreToolUse" then
+        {state: "working", label: "working", detail: tool}
+      elif $ev == "PermissionRequest" then
+        if .tool_name == "AskUserQuestion" then
+          {state: "waiting", label: "waiting for answer", detail: question}
+        elif .tool_name == "ExitPlanMode" then
+          {state: "waiting", label: "waiting for plan approval", detail: "Plan ready for review"}
+        else
+          {state: "waiting", label: "waiting for permission", detail: tool}
+        end
+      elif $ev == "PostToolUse" or $ev == "PostToolUseFailure" or $ev == "PermissionDenied" then
+        {state: "working", label: "working"}
+      elif $ev == "Notification" then
+        if (.notification_type // "" | startswith("elicitation_")) and .notification_type != "elicitation_complete"
+           and .notification_type != "elicitation_response" then
+          {state: "waiting", label: "waiting for input", detail: (.message // "" | short(80))}
+        elif .notification_type == "idle_prompt" and $was == "done" then
+          {state: "idle", label: "idle"}
+        else null end
+      elif $ev == "Stop" then
+        {state: "done", label: "done", detail: (.last_assistant_message // "" | short(80))}
+      elif $ev == "StopFailure" then
+        {state: "error", label: "error",
+         detail: (.error // .error_message // .message // .reason // "API error" | short(80))}
+      else null end
+    ) as $upd
+  | {id: .session_id, pid: $pid, kitty: ($o.kitty // $kitty),
+     project: ($o.project // (if $project != "" then $project else .cwd end | split("/") | last)),
+     state: "idle", label: "idle", detail: "", prompt: "",
+     started: ($o.started // $now), since: ($o.since // $now)}
+    + ($o | del(.id, .pid, .kitty, .project, .started))
+    + {cwd: (.new_cwd // .cwd // $o.cwd), mode: (.permission_mode // $o.mode // "default")}
+    + ($upd // {})
+    | if $upd != null and $upd.state != $was then .since = $now else . end
+' > "$tmp" && mv -f "$tmp" "$file" || rm -f "$tmp"
+
+[ $new = 1 ] && setsid -f sh -c 'waitpid "$1" 2>/dev/null; rm -f "$2"' sh "$pid" "$file" \
+  </dev/null >/dev/null 2>&1
+exit 0

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# claude-focus <claude pid> <kitty pid>: focus the kitty window a Claude Code
+# session runs in (bar session list click). Every kitty OS window is its own
+# process, so Hyprland focuses it by PID; kitty's remote control then picks
+# the tab/window whose foreground process is the session.
+
+claude=$1 kitty=$2
+[[ $kitty =~ ^[1-9][0-9]*$ ]] || exit 0
+
+hyprctl dispatch focuswindow "pid:$kitty" >/dev/null 2>&1 \
+  || hyprctl dispatch "hl.dsp.focus({ window = \"pid:$kitty\" })" >/dev/null
+
+# --match pid: matches the window's own process (the shell), not the claude
+# running in it, so look the window up by foreground process instead
+[[ $claude =~ ^[1-9][0-9]*$ ]] || exit 0
+sock=unix:@kitty-$kitty
+id=$(kitty @ --to "$sock" ls 2>/dev/null | jq -r --argjson p "$claude" '
+  first(.[].tabs[].windows[] | select(any(.foreground_processes[]; .pid == $p)) | .id) // empty')
+[[ -n $id ]] && kitty @ --to "$sock" focus-window --match "id:$id" >/dev/null 2>&1
+exit 0
