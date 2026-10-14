@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Media state for the dashboard card.
+# Media state for the bar (eww.yuck) and the dashboard card.
 #   dashboard-player            deflisten: one JSON line per metadata/status
 #                               change of the active player (playerctld picks
 #                               the most recently active one, so no -p)
@@ -9,24 +9,34 @@
 #
 # `playerctl -F` blocks until a player appears, prints on every change and an
 # empty line when the last player goes away. The loop restarts it if it ever
-# exits (dbus hiccup at login). Album art is copied to a hash-named file under
-# $XDG_RUNTIME_DIR: the yuck shows it as a CSS background-image, which only
-# reloads when the path changes, and http(s) art needs a local file anyway.
+# exits (dbus hiccup at login). A play/pause costs no fork: the JSON is built
+# in bash, and playerctld is only asked for the real player name when the
+# track changes.
+#
+# Album art is copied to a hash-named file under $XDG_RUNTIME_DIR: the yuck
+# shows it as a CSS background-image, which only reloads when the path
+# changes, and http(s) art needs a local file anyway. Art that is not cached
+# yet is fetched in the background, so a slow download never holds back the
+# status/title line: the line goes out with art "" first, and the fetch
+# re-emits it with the art once done -- but only if that track is still the
+# one shown (see emit).
 
 set -u
 
 rt=${XDG_RUNTIME_DIR:-/tmp}
 art_dir="$rt/eww-art"
+lock="$art_dir/.emit.lock"
+state="$art_dir/.current"   # art URL of the last line printed, then that line
 
 fmt_time() { printf '%d:%02d' $(( $1 / 60 )) $(( $1 % 60 )); }
 
 if [ "${1:-}" = position ]; then
-    pos=$(playerctl position 2>/dev/null)
-    len=$(playerctl metadata mpris:length 2>/dev/null)
-    pos=${pos%%.*}
+    # {{position}} and mpris:length are both microseconds; one call for both.
+    pos="" len=""
+    read -r pos len < <(playerctl metadata -f '{{position}} {{mpris:length}}' 2>/dev/null)
     [[ $pos =~ ^[0-9]+$ ]] || pos=0
     [[ $len =~ ^[0-9]+$ ]] || len=0
-    len=$(( len / 1000000 ))
+    pos=$(( pos / 1000000 )) len=$(( len / 1000000 ))
     pct=0
     if [ "$len" -gt 0 ]; then
         pct=$(( (pos * 100 + len - 1) / len ))
@@ -38,61 +48,130 @@ if [ "${1:-}" = position ]; then
     exit 0
 fi
 
-inactive='{"active":false,"player":"","status":"Stopped","title":"","artist":"","art":"","length":0}'
+# Same keys as the deflisten :initial in widgets/dashboard.yuck. `art` stays
+# last: fetch_art swaps it in by replacing the $no_art tail of the line.
+no_art='"art":""}'
+inactive='{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"art":""}'
 
-cache_art() {
-    # $1: mpris:artUrl (file:// or http(s)://). Prints the local path or "".
-    # Written to a temp file and renamed only on success, so an interrupted
-    # copy/download never leaves a truncated file that passes the -s check.
-    local url=$1 file tmp src ok=false
-    [ -n "$url" ] || { echo ""; return; }
-    file="$art_dir/$(printf %s "$url" | md5sum | cut -c1-16).img"
-    if [ -s "$file" ]; then
-        touch "$file"   # most recently used, for the pruning below
-    else
-        tmp="$file.tmp.$$"
-        case "$url" in
-            file://*)
-                # Undo percent-encoding. Backslashes are doubled first so %b
-                # only decodes the \xHH made from %HH, nothing else in the path.
-                src=${url#file://}
-                src=${src//\\/\\\\}
-                src=$(printf '%b' "${src//%/\\x}" 2>/dev/null)
-                cp -f "$src" "$tmp" 2>/dev/null && ok=true
-                ;;
-            http://*|https://*)
-                curl -sf -m 10 -o "$tmp" "$url" 2>/dev/null && ok=true
-                ;;
-        esac
-        if [ "$ok" = true ] && [ -s "$tmp" ]; then
-            mv -f "$tmp" "$file"
-            # Keep the 20 most recently used; names are hex, so ls is safe.
-            ls -t "$art_dir"/*.img 2>/dev/null | tail -n +21 | xargs -r rm -f --
-        else
-            rm -f "$tmp"
-        fi
-    fi
-    if [ -s "$file" ]; then echo "$file"; else echo ""; fi
+json_str() {
+    # $1 -> JSON string body in REPLY. Control characters become spaces (only
+    # tabs and the like are left: newlines were joined away, and the two field
+    # separators cannot occur), then backslash and quote are escaped.
+    local s=${1//[$'\x01'-$'\x1f']/ }
+    s=${s//\\/\\\\}
+    REPLY=${s//\"/\\\"}
+}
+
+trim() {
+    # Strip leading/trailing whitespace from $1 into REPLY (a joined-away
+    # newline at a field edge leaves a space there).
+    local s=$1
+    s=${s#"${s%%[![:space:]]*}"}
+    REPLY=${s%"${s##*[![:space:]]}"}
+}
+
+player_icon() {
+    case $1 in
+        spotify)                    REPLY=󰓇 ;;
+        firefox|librewolf|zen)      REPLY=󰈹 ;;
+        chromium|chrome|brave)      REPLY=󰊯 ;;
+        vlc)                        REPLY=󰕼 ;;
+        *)                          REPLY=󰝚 ;;
+    esac
 }
 
 real_name() {
-    # $1: {{playerName}}. Through playerctld that is "playerctld" itself; the
-    # player it forwards to is the first of its PlayerNames (most recently
-    # active first), e.g. "org.mpris.MediaPlayer2.firefox.instance_1_84" ->
-    # "firefox", matching what {{playerName}} gives for a direct connection.
+    # $1: {{playerName}} into REPLY. Through playerctld that is "playerctld"
+    # itself; the player it forwards to is the first of its PlayerNames (most
+    # recently active first), e.g. "org.mpris.MediaPlayer2.firefox.instance_1_84"
+    # -> "firefox", matching what {{playerName}} gives for a direct connection.
     local n
-    [ "$1" = playerctld ] || { echo "$1"; return; }
+    REPLY=$1
+    [ "$1" = playerctld ] || return
     n=$(timeout 1 busctl --user --json=short get-property org.mpris.MediaPlayer2.playerctld \
             /org/mpris/MediaPlayer2 com.github.altdesktop.playerctld PlayerNames 2>/dev/null \
         | jq -r '.data[0] // empty' 2>/dev/null)
     n=${n#org.mpris.MediaPlayer2.}
     n=${n%%.*}
-    echo "${n:-$1}"
+    [ -n "$n" ] && REPLY=$n
+}
+
+declare -A art_hash=()   # "=()": an unassigned one is unbound under set -u
+art_path() {
+    # $1: mpris:artUrl -> its cache file in REPLY. The hash is memoised, so a
+    # status change of the same track forks nothing.
+    local h=${art_hash[$1]-}
+    if [ -z "$h" ]; then
+        [ "${#art_hash[@]}" -lt 256 ] || art_hash=()
+        h=$(printf %s "$1" | md5sum)
+        h=${h:0:16}
+        art_hash[$1]=$h
+    fi
+    REPLY="$art_dir/$h.img"
+}
+
+emit() {
+    # $1: art URL of the track, $2: JSON line. Every fetch job has a
+    # <file>.fetching marker, created by the loop below before it starts the
+    # job and removed by the job after its last print. So with no marker
+    # present nobody else can print and the lock is skipped (no flock fork).
+    # With one present, the state write and the print happen under the lock
+    # the job checks $state under, so its late line never lands after a newer
+    # one.
+    local m=("$art_dir"/*.fetching)
+    if [ -e "${m[0]}" ]; then
+        {
+            flock 9
+            printf '%s\n%s\n' "$1" "$2" > "$state"
+            printf '%s\n' "$2"
+        } 9> "$lock"
+    else
+        printf '%s\n%s\n' "$1" "$2" > "$state"
+        printf '%s\n' "$2"
+    fi
+}
+
+fetch_art() {
+    # Background job; its <file>.fetching marker already exists (see emit).
+    # $1: URL, $2: cache file. Copies/downloads to a temp file renamed only on
+    # success, so an interrupted fetch never leaves a truncated file that
+    # passes the -s check.
+    local url=$1 file=$2 tmp="$2.tmp" src ok=false cur line
+    case "$url" in
+        file://*)
+            # Undo percent-encoding. Backslashes are doubled first so %b
+            # only decodes the \xHH made from %HH, nothing else in the path.
+            src=${url#file://}
+            src=${src//\\/\\\\}
+            src=$(printf '%b' "${src//%/\\x}" 2>/dev/null)
+            cp -f "$src" "$tmp" 2>/dev/null && ok=true
+            ;;
+        http://*|https://*)
+            curl -sf -m 10 -o "$tmp" "$url" 2>/dev/null && ok=true
+            ;;
+    esac
+    if [ "$ok" = true ] && [ -s "$tmp" ]; then
+        mv -f "$tmp" "$file"
+        # Keep the 20 most recently used; names are hex, so ls is safe.
+        ls -t "$art_dir"/*.img 2>/dev/null | tail -n +21 | xargs -r rm -f --
+        {
+            flock 9
+            { IFS= read -r cur && IFS= read -r line; } < "$state"
+            if [ "$cur" = "$url" ] && [ "${line%"$no_art"}" != "$line" ]; then
+                line="${line%"$no_art"}\"art\":\"$file\"}"
+                printf '%s\n%s\n' "$url" "$line" > "$state"
+                printf '%s\n' "$line"
+            fi
+            rm -f "$file.fetching"
+        } 9> "$lock"
+    else
+        rm -f "$tmp" "$file.fetching"
+    fi
 }
 
 mkdir -p "$art_dir"
-# Temp files of a copy/download cut short by a kill (the prune only sees *.img).
-rm -f "$art_dir"/*.tmp.*
+# Leftovers of a fetch cut short by a kill (the prune only sees *.img).
+rm -f "$art_dir"/*.tmp "$art_dir"/*.fetching
 # Unit separator between fields: a whitespace IFS would collapse empty ones
 # (no artist) and shift everything after it. Record separator at the end: a
 # newline inside a title or artist splits playerctl's output line, so lines
@@ -101,11 +180,11 @@ sep=$'\x1f' eor=$'\x1e'
 fmt="{{playerName}}${sep}{{status}}${sep}{{title}}${sep}{{artist}}${sep}{{mpris:artUrl}}${sep}{{mpris:length}}${eor}"
 
 while true; do
-    echo "$inactive"
-    rec=""
+    emit "" "$inactive"
+    rec="" track="" real=""
     playerctl -F metadata -f "$fmt" 2>/dev/null | while IFS= read -r line; do
         if [ -z "$rec" ] && [ -z "$line" ]; then
-            echo "$inactive"
+            emit "" "$inactive"
             continue
         fi
         rec+=$line
@@ -117,16 +196,34 @@ while true; do
         IFS=$sep read -r name status title artist arturl length <<< "$rec"
         rec=""
         if [ -z "$name" ]; then
-            echo "$inactive"
+            emit "" "$inactive"
             continue
         fi
-        name=$(real_name "$name")
-        art=$(cache_art "$arturl")
+        # Only a new track (or player) can change who playerctld forwards to.
+        if [ "$name$sep$title$sep$artist$sep$arturl" != "$track" ]; then
+            track="$name$sep$title$sep$artist$sep$arturl"
+            real_name "$name"; real=$REPLY
+        fi
+        art=""
+        if [ -n "$arturl" ]; then
+            art_path "$arturl"
+            if [ -s "$REPLY" ]; then
+                art=$REPLY
+            elif ( set -o noclobber; : > "$REPLY.fetching" ) 2>/dev/null; then
+                # noclobber: one job per file however many status events
+                # arrive while it runs.
+                fetch_art "$arturl" "$REPLY" < /dev/null &
+            fi
+        fi
         [[ $length =~ ^[0-9]+$ ]] || length=0
-        jq -cn --arg name "$name" --arg status "$status" --arg title "$title" \
-               --arg artist "$artist" --arg art "$art" --argjson length "$length" \
-               'def trim: gsub("^\\s+|\\s+$"; "");   # a joined-away newline at a field edge
-                {active:true,player:$name,status:$status,title:($title|trim),artist:($artist|trim),art:$art,length:$length}'
+        show=false
+        [ "$status" = Playing ] || [ "$status" = Paused ] && show=true
+        player_icon "$real"; icon=$REPLY
+        json_str "$real";   j_name=$REPLY
+        json_str "$status"; j_status=$REPLY
+        trim "$title";  json_str "$REPLY"; j_title=$REPLY
+        trim "$artist"; json_str "$REPLY"; j_artist=$REPLY
+        emit "$arturl" "{\"active\":true,\"player\":\"$j_name\",\"icon\":\"$icon\",\"status\":\"$j_status\",\"show\":$show,\"title\":\"$j_title\",\"artist\":\"$j_artist\",\"length\":$length,\"art\":\"$art\"}"
     done
     sleep 2
 done

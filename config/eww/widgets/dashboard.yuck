@@ -64,8 +64,10 @@
   :initial '{"ok":false,"stale":false,"reason":"init","temp":0,"code":-1,"is_day":1,"icon":"","text":"","label":"","ts":0}'
   "~/.config/eww/scripts/dashboard-weather")
 
+;; Shared with the bar (eww.yuck). Keys match the script's `inactive` line;
+;; `show` is false once the player is Stopped (the bar hides then).
 (deflisten player
-  :initial '{"active":false,"player":"","status":"Stopped","title":"","artist":"","art":"","length":0}'
+  :initial '{"active":false,"player":"","icon":"","status":"Stopped","show":false,"title":"","artist":"","length":0,"art":""}'
   "~/.config/eww/scripts/dashboard-player")
 (defpoll player_pos :interval "1s" :run-while {dashboard_open && player.active}
   :initial '{"pct":0,"pos":"0:00","len":"0:00"}'
@@ -177,9 +179,10 @@
 
 ;; The tiles row above sets the card width, so the text column gets 264px
 ;; (526 - 2*3 border - 2*18 padding - 200 art - 20 spacing). The mono font is
-;; 12px/char at 20px bold and 10px/char at 16px, and the ellipsis is one more
-;; char: 21+1 and 25+1 chars fit, so long titles cannot widen the card. Double-
-;; width (CJK) glyphs can still overflow it. The placeholder keeps the grid
+;; 12px/char at 20px bold and 10px/char at 16px, so 21 and 25 chars fit.
+;; :limit-width is GTK max-width-chars + Pango ellipsizing (a pixel cap of
+;; chars x char width, ellipsis included), so long titles -- double-width CJK
+;; ones too -- cannot widen the card. The placeholder keeps the grid
 ;; shape when no player is around. playerctld makes `playerctl` follow the
 ;; last active player.
 (defwidget card_media []

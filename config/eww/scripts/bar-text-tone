@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Pick the bar's media text color per monitor from the wallpaper behind it.
+
+    bar-text-tone           print {"<connector>": "<classes>", ...} (defpoll)
+    bar-text-tone --apply   same, pushed with `eww update bar_tone=...`
+
+The media text sits straight on the wallpaper (no pill) and windows never go
+under the bar's exclusive zone, so its background is the wallpaper image
+itself: no screenshots needed. For every monitor the hyprpaper image is fitted
+the way hyprpaper fits it, the strip the text can occupy is cut out, and each
+candidate theme color is scored by its WCAG contrast against the strip's
+pixels. The score is the 10th-percentile contrast, so a few bright clouds
+don't outvote a mostly dark strip. The winner becomes `tone-<color>`; when even
+that scores under 3:1 (busy wallpaper) `low-contrast` is added, which gives the
+text a soft opposite-tone shadow in eww.scss.
+
+Results are cached under $XDG_RUNTIME_DIR by wallpaper path + mtime, fit mode,
+monitor geometry and palette, so the hourly poll only reads small files; the
+image is decoded only when one of those changes. Run with --apply after
+changing the wallpaper to update the bar right away.
+"""
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+EWW_DIR = os.path.dirname(HERE)
+HYPRPAPER_CONF = os.path.expanduser("~/.config/hypr/hyprpaper.conf")
+CACHE_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "eww-bar-tone")
+
+# Strip the media text can occupy, in logical px from the monitor's top-left:
+# from where the label starts (bar margin + power, workspaces and media
+# controls pills + spacings + .media_info padding) to the left edge of the
+# centered date/clock pill. Measured from a screenshot of a 2560px scale-1 bar;
+# re-measure after resizing bar segments.
+TEXT_LEFT = 548
+CENTER_HALF = 123
+TEXT_TOP, TEXT_BOTTOM = 4, 26
+
+CANDIDATES = ["bg0", "bg1", "fg0", "fg1", "fg2"]
+DEFAULT = "tone-bg0"     # also the yuck's fallback
+LOW_CONTRAST = 3.0       # WCAG minimum for large/bold text
+
+
+def palette():
+    """Candidate colors from the generated _colors.scss, as (name, (r, g, b))."""
+    with open(os.path.join(EWW_DIR, "_colors.scss")) as f:
+        found = dict(re.findall(r"^\$(\w+):\s*#([0-9a-fA-F]{6});", f.read(), re.M))
+    return [(n, tuple(int(found[n][i:i + 2], 16) for i in (0, 2, 4)))
+            for n in CANDIDATES if n in found]
+
+
+def luminance(rgb):
+    def lin(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = rgb
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def contrast(l1, l2):
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def wallpapers():
+    """{monitor or "": (path, fit_mode)} from hyprpaper.conf's wallpaper blocks."""
+    out = {}
+    try:
+        with open(HYPRPAPER_CONF) as f:
+            text = f.read()
+    except OSError:
+        return out
+    for block in re.findall(r"wallpaper\s*\{(.*?)\}", text, re.S):
+        kv = dict(re.findall(r"^\s*(\w+)\s*=[ \t]*(.*?)\s*$", block, re.M))
+        if kv.get("path"):
+            out[kv.get("monitor", "")] = (os.path.expanduser(kv["path"]),
+                                         kv.get("fit_mode", "cover"))
+    return out
+
+
+def strip_pixels(path, fit, mon):
+    """Pixels (r, g, b) of the wallpaper strip behind the media text."""
+    import gi
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import GdkPixbuf
+
+    img = GdkPixbuf.Pixbuf.new_from_file(path)
+    iw, ih = img.get_width(), img.get_height()
+    mw, mh, scale = mon["width"], mon["height"], mon["scale"]
+    if mon.get("transform", 0) % 2:
+        mw, mh = mh, mw
+    logical_w = mw / scale
+    # Strip in physical monitor px.
+    x0, x1 = TEXT_LEFT * scale, (logical_w / 2 - CENTER_HALF) * scale
+    y0, y1 = TEXT_TOP * scale, TEXT_BOTTOM * scale
+    if x1 <= x0:
+        return []
+    # Monitor px -> image px for the fit mode (hyprpaper centers the image).
+    if fit == "fill":
+        sx, sy, ox, oy = iw / mw, ih / mh, 0, 0
+    else:
+        s = (max if fit != "contain" else min)(mw / iw, mh / ih)
+        sx = sy = 1 / s
+        ox, oy = (iw * s - mw) / 2, (ih * s - mh) / 2
+    ix0, ix1 = (x0 + ox) * sx, (x1 + ox) * sx
+    iy0, iy1 = (y0 + oy) * sy, (y1 + oy) * sy
+    # contain can put the strip in the letterbox (outside the image): black.
+    ix0, ix1 = max(0, ix0), min(iw, ix1)
+    iy0, iy1 = max(0, iy0), min(ih, iy1)
+    if ix1 - ix0 < 1 or iy1 - iy0 < 1:
+        return [(0, 0, 0)]
+    crop = img.new_subpixbuf(int(ix0), int(iy0), max(1, int(ix1 - ix0)), max(1, int(iy1 - iy0)))
+    # Downscale with averaging: per-text-cell detail is all that matters.
+    small = crop.scale_simple(min(256, crop.get_width()), min(8, crop.get_height()),
+                              GdkPixbuf.InterpType.BILINEAR)
+    w, h, n, stride = small.get_width(), small.get_height(), small.get_n_channels(), small.get_rowstride()
+    data = small.get_pixels()
+    return [tuple(data[y * stride + x * n + c] for c in range(3)) for y in range(h) for x in range(w)]
+
+
+def pick(pixels, colors):
+    """'tone-<name>[ low-contrast]' for the best-scoring candidate."""
+    if not pixels or not colors:
+        return DEFAULT
+    lums = [luminance(p) for p in pixels]
+    best_name, best_score = None, -1.0
+    for name, rgb in colors:
+        lc = luminance(rgb)
+        scores = sorted(contrast(lc, lp) for lp in lums)
+        score = scores[len(scores) // 10]
+        if score > best_score:
+            best_name, best_score = name, score
+    classes = f"tone-{best_name}"
+    if best_score < LOW_CONTRAST:
+        classes += " low-contrast"
+    return classes
+
+
+def tone(mon, papers, colors):
+    path, fit = papers.get(mon["name"]) or papers.get("") or (None, None)
+    if not path:
+        return DEFAULT
+    try:
+        mtime = os.stat(path).st_mtime_ns
+    except OSError:
+        return DEFAULT
+    key = hashlib.sha1(json.dumps(
+        [path, mtime, fit, mon["width"], mon["height"], mon["scale"], mon.get("transform", 0),
+         colors, TEXT_LEFT, CENTER_HALF, TEXT_TOP, TEXT_BOTTOM]).encode()).hexdigest()[:16]
+    cache = os.path.join(CACHE_DIR, key)
+    try:
+        with open(cache) as f:
+            return f.read()
+    except OSError:
+        pass
+    try:
+        result = pick(strip_pixels(path, fit, mon), colors)
+    except Exception:
+        return DEFAULT
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    with open(cache, "w") as f:
+        f.write(result)
+    return result
+
+
+def main():
+    apply = sys.argv[1:] == ["--apply"]
+    if sys.argv[1:] not in ([], ["--apply"]):
+        sys.exit("usage: bar-text-tone [--apply]")
+    try:
+        mons = json.loads(subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True,
+                                         text=True, timeout=5).stdout)
+    except Exception:
+        mons = []
+    papers, colors = wallpapers(), palette()
+    result = {m["name"]: tone(m, papers, colors) for m in mons
+              if m["name"] != "FALLBACK" and not m["name"].startswith("HEADLESS-")}
+    line = json.dumps(result, separators=(",", ":"))
+    print(line)
+    if apply:
+        subprocess.run(["eww", "update", f"bar_tone={line}"], check=False)
+
+
+if __name__ == "__main__":
+    main()

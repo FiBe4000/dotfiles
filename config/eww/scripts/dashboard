@@ -7,7 +7,7 @@
 #   dashboard radio wifi|bt
 #   dashboard mute sink|source
 #   dashboard set volume|mic|brightness <0-100>
-#   dashboard media previous|play-pause|next
+#   dashboard media previous|play-pause|next|up|down
 #   dashboard seek <0-100>
 #
 # Actions only act. The new state comes back through the listeners/polls that
@@ -195,7 +195,16 @@ case "$cmd" in
     media)
         case "$arg" in
             previous|play-pause|next) playerctl "$arg" 2>/dev/null ;;
-            *) usage "media previous|play-pause|next" ;;
+            # Scroll on the bar's track text. A touchpad swipe is a burst of
+            # scroll events: the lock is held through the pause, so the burst
+            # skips one track instead of a dozen.
+            up|down)
+                exec 8> "$rt/eww-media-scroll.lock"
+                flock -n 8 || exit 0
+                if [ "$arg" = down ]; then playerctl next; else playerctl previous; fi 2>/dev/null
+                sleep 0.6
+                ;;
+            *) usage "media previous|play-pause|next|up|down" ;;
         esac
         ;;
     seek)

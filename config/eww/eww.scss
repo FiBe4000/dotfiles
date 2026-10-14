@@ -117,12 +117,48 @@ $transparent-bg0: rgba($bg0, 0.5);
   }
 }
 
+// Sits straight on the wallpaper (no segment pill). The color follows the
+// wallpaper behind it: scripts/bar-text-tone picks, per monitor, the theme
+// color with the best contrast there and the yuck adds it as `tone-<name>`
+// (bg0 when nothing is known yet). `low-contrast` means even the best pick is
+// under 3:1 against a busy background, so the text gets an opposite-tone edge.
 .media_info {
   all: unset;
   color: $bg0;
-  border-style: solid;
   padding-left: 10px;
   padding-right: 10px;
+  transition: color 0.5s, opacity 0.5s;
+
+  &.tone-bg0 { color: $bg0; }
+  &.tone-bg1 { color: $bg1; }
+  &.tone-fg0 { color: $fg0; }
+  &.tone-fg1 { color: $fg1; }
+  &.tone-fg2 { color: $fg2; }
+
+  &.low-contrast.tone-bg0,
+  &.low-contrast.tone-bg1 { text-shadow: $text-shadow-on-dark; }
+  &.low-contrast.tone-fg0,
+  &.low-contrast.tone-fg1,
+  &.low-contrast.tone-fg2 { text-shadow: $text-shadow-on-light; }
+}
+
+// Hover keeps the tone's lightness: dark text turns a darker accent, light
+// text a lighter one, so it stays readable on the same background.
+.media_info_eventbox:hover .media_info {
+  color: $accent3;
+
+  &.tone-fg0,
+  &.tone-fg1,
+  &.tone-fg2 { color: $accent1; }
+}
+
+// Paused: the track text dims, the controls stay as they are
+.media_player.paused .media_info {
+  opacity: 0.55;
+}
+
+.media_player.paused .media_info_eventbox:hover .media_info {
+  opacity: 1;
 }
 
 .date {

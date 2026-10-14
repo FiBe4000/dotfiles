@@ -3,6 +3,11 @@
 (deflisten notifications :initial `{"count": 0, "dnd": false, "visible": false, "inhibited": false}` `scripts/notifications`)
 ;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
 ;; follows the most recently active player, so no per-player bookkeeping here.
+;; Media text color per monitor, picked from the wallpaper behind it:
+;; {"<connector>": "tone-<color>[ low-contrast]"}. The script caches by
+;; wallpaper + monitor geometry, so the hourly re-check (which catches a
+;; wallpaper change) is a file read; `bar-text-tone --apply` updates at once.
+(defpoll bar_tone :interval "1h" :initial "{}" "scripts/bar-text-tone")
 
 (deflisten workspaces :initial "[]" "bash ~/.config/eww/scripts/get-workspaces")
 
@@ -11,7 +16,10 @@
 (include "widgets/osd.yuck")
 (include "widgets/dashboard.yuck")
 
-(defwindow bar
+; Opened by scripts/launch-eww-bars with --arg monitor=<Hyprland connector>
+; (eww 0.5 refuses to open a window when a declared arg is missing, even a
+; ?optional one, so every arg added here must be passed there too).
+(defwindow bar [monitor]
   :namespace "eww-bar"
   :exclusive true
   :windowtype "dock"
@@ -21,10 +29,10 @@
               :width "100%"
               :height "28px"
               :anchor "top center")
-  (main_bar)
+  (main_bar :monitor monitor)
 )
 
-(defwidget main_bar []
+(defwidget main_bar [monitor]
   (centerbox :class "main_container"
     :orientation "h"
     (box :class "left_modules"
@@ -34,7 +42,7 @@
          :spacing 12
     (power)
     (workspaces)
-    (media_player))
+    (media_player :monitor monitor))
     (box :class "center_modules"
          :orientation "h"
          :space-evenly false
@@ -136,18 +144,19 @@
   )
 )
 
-(defwidget media_player []
+(defwidget media_player [monitor]
   (box
-    :class "media_player"
+    :class "media_player ${player.status == "Paused" ? "paused" : ""}"
     :orientation "h"
     :spacing 12
     :space-evenly false
-    :visible {player.active}
+    :visible {player.active && player.show}
     (media_controls)
-    (media_info)
+    (media_info :monitor monitor)
   )
 )
 
+;; Same glyphs and actions as the dashboard media card.
 (defwidget media_controls []
   (box
     :class "media_controls"
@@ -156,28 +165,41 @@
     :space-evenly false
     (eventbox :cursor "pointer" :tooltip "Previous"
       (button :class "previous_button"
-              :onclick "playerctl previous"
-              ""))
+              :onclick "~/.config/eww/scripts/dashboard media previous"
+              "󰒮"))
     (eventbox :cursor "pointer" :tooltip {player.status == "Playing" ? "Pause" : "Play"}
       (button :class "play_pause_button"
-              :onclick "playerctl play-pause"
-              {player.status == "Playing" ? "" : ""}))
+              :onclick "~/.config/eww/scripts/dashboard media play-pause"
+              {player.status == "Playing" ? "󰏤" : "󰐊"}))
     (eventbox :cursor "pointer" :tooltip "Next"
       (button :class "next_button"
-              :onclick "playerctl next"
-              ""))
+              :onclick "~/.config/eww/scripts/dashboard media next"
+              "󰒭"))
   )
 )
 
-(defwidget media_info []
-  (box
-    :class "media_info"
-    :orientation "h"
-    (label :limit-width 75 :show-truncated true
-           :text "${player.player == "spotify" ? " "
-                   : player.player == "firefox" ? " "
-                   : player.player == "chromium" ? " "
-                   : " "} ${player.artist != "" ? "${player.artist} - " : ""}${player.title}")
+;; Click opens the dashboard (art, seek bar); scroll skips tracks. The tooltip
+;; carries the full text the label may truncate.
+;;
+;; Width adapts to the monitor by itself: :limit-width is GTK max-width-chars
+;; plus Pango ellipsizing, so the label's minimum width is just the ellipsis,
+;; and the centerbox only ever gives the left side the room up to the center
+;; pill. The label shrinks into that (ellipsized by pixel width, so wide CJK
+;; glyphs are fine too) and the center never moves. The 500 is only there to
+;; switch ellipsizing on; it is never the binding limit.
+(defwidget media_info [monitor]
+  (eventbox
+    :class "media_info_eventbox"
+    :cursor "pointer"
+    :tooltip "${player.artist != "" ? "${player.artist} – " : ""}${player.title} · ${player.player}"
+    :timeout "1s" ; dashboard script does several eww IPC round-trips
+    :onclick "~/.config/eww/scripts/dashboard toggle"
+    :onscroll "~/.config/eww/scripts/dashboard media {}"
+    (box
+      :class "media_info ${bar_tone[monitor] ?: "tone-bg0"}"
+      :orientation "h"
+      (label :limit-width 500 :show-truncated true
+             :text "${player.icon}  ${player.artist != "" ? "${player.artist} - " : ""}${player.title}"))
   )
 )
 

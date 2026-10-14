@@ -17,3 +17,9 @@ $shadow-osd: 0 1px 2px rgba($shadow, 0.30), 2px 6px 10px rgba($shadow, 0.28); //
 // like tiled windows. Cards paint in order, so a shadow falling on a later
 // sibling is hidden under it -- same as Hyprland's inner gaps.
 $shadow-card: 0 1px 2px rgba($shadow, 0.30), 2px 6px 8px rgba($shadow, 0.35); // 6 + 2.5*8 = 26px
+// Text straight on the wallpaper (bar media text, `low-contrast` only): light
+// text gets a dark shadow, dark text a light one, so a busy background behind
+// either still leaves an edge. Same down-right fall; 1 + 2.5*2 = 6px fits the
+// bar's 12px strip.
+$text-shadow-on-light: 1px 1px 2px rgba($shadow, 0.85);
+$text-shadow-on-dark: 1px 1px 2px rgba($fg2, 0.75);

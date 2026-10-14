@@ -54,14 +54,14 @@ while IFS=' ' read -r name idx; do
     fi
 done <<< "$monitor_data"
 
-# Build the desired bar set: "<eww index> <id>" per line
+# Build the desired bar set: "<eww index> <id> <name>" per line
 desired=""
 while IFS=' ' read -r name idx; do
     if [[ "$has_external" == true ]]; then
         # Docked — bars on external monitors only
         [[ "$name" == "eDP-1" ]] && continue
     fi
-    desired+="${idx} bar-${name}"$'\n'
+    desired+="${idx} bar-${name} ${name}"$'\n'
 done <<< "$monitor_data"
 
 # Nothing to do if exactly the wanted bars are already up. `eww active-windows`
@@ -76,7 +76,7 @@ active=$(eww active-windows 2>/dev/null | sed -n 's/^\(bar-[^:]*\):.*/\1/p' | so
 mapped=$(hyprctl layers -j 2>/dev/null | jq -r 'to_entries[]
     | select([.value.levels[][] | .namespace] | index("eww-bar"))
     | "bar-\(.key)"' | sort)
-wanted=$(cut -d' ' -f2- <<< "$desired" | grep -v '^$' | sort)
+wanted=$(cut -d' ' -f2 <<< "$desired" | grep -v '^$' | sort)
 [[ "$active" == "$wanted" && "$mapped" == "$wanted" ]] && exit 0
 
 # Full daemon restart — see the note on the tray above. The first `eww open`
@@ -116,8 +116,9 @@ done
 
 # fd 9 is closed for eww so the forked daemon doesn't inherit the lock and hold
 # it for the rest of the session.
-while IFS=' ' read -r idx id; do
+# The bar's `monitor` window arg is the connector name (see the defwindow).
+while IFS=' ' read -r idx id name; do
     [[ -n "$id" ]] || continue
-    eww open bar --screen "$idx" --id "$id" > /dev/null 2>&1 9>&-
+    eww open bar --screen "$idx" --id "$id" --arg monitor="$name" > /dev/null 2>&1 9>&-
 done <<< "$desired"
 exit 0
