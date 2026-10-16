@@ -1,0 +1,309 @@
+// Notification center (widgets/notifications.yuck). Ported from the swaync
+// style it replaces: translucent bg0 panel and bg1 cards, 3px $bg3 borders,
+// 20px radius, $fg2 text; critical cards get a $red border. Blur comes from
+// the Hyprland layer rule (ignore_alpha 0.55: panel and cards are >= 0.8
+// alpha, the shadows stay under 0.55 and are not blurred). The backdrop is
+// fully transparent: it only catches clicks outside the panel.
+//
+// Shadows follow _shadows.scss (light from the top, slightly top-left; GTK3
+// blur ~ sigma, so offset + 2.5 * blur must fit the room around the box). The
+// panel touches the monitor's right and bottom edges with 20px to spare, so
+// its key shadow is partly off-screen, as swaync's was. Cards sit in a scroll
+// viewport, which clips at its bounds: .notif_list keeps 8/20/30/20px of room.
+$notif-radius: 20px;
+$notif-panel-width: 476px;
+$shadow-notif-card: 0 1px 2px rgba($shadow, 0.20), 1px 4px 6px rgba($shadow, 0.22);   // 4 + 2.5*6 = 19 <= 20/30
+$shadow-notif-panel: 0 2px 4px rgba($shadow, 0.20), 2px 8px 12px rgba($shadow, 0.22);
+
+// Critical cards: the yuck sets `border-color: @notif_critical` as the card's
+// inline :style (popup cards are never rebuilt, so no class toggle).
+@define-color notif_critical #{$red};
+
+// eww puts the window name on the toplevel as a class; keep it transparent.
+.notif_center {
+  background-color: $transparent;
+}
+
+// Text for everything notifications draw (the GTK default would be the
+// proportional UI font and the theme's text colour).
+.notif_panel,
+.notif_popup_stack {
+  font-family: $mono-font;
+  color: $fg2;
+}
+
+.notif_backdrop {
+  background-color: $transparent;
+}
+
+.notif_panel_shell {
+  min-width: $notif-panel-width; // no margins: the room around it is spacer eventboxes
+  background-color: rgba($bg0, 0.85);
+  border: 3px solid $bg3;
+  border-radius: $notif-radius;
+  box-shadow: $shadow-notif-panel;
+}
+
+.notif_panel {
+  padding-top: 12px;
+}
+
+// --- header -----------------------------------------------------------------
+
+.notif_header {
+  padding: 4px 20px 8px 20px;
+}
+
+.notif_title {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.notif_controls {
+  margin-top: 10px;
+}
+
+.notif_dnd_label {
+  font-size: 15px;
+  color: $fg1;
+  transition: color 0.5s;
+}
+
+.notif_dnd_switch {
+  font-size: 26px;
+  &.off { color: $fg1; }
+  &.on { color: $red; } // the bar shows DND in red too
+}
+
+.notif_dnd:hover .notif_dnd_label {
+  color: $fg2;
+}
+
+.notif_clear_all_label {
+  font-size: 15px;
+  font-weight: bold;
+  color: $yellow; // the bar's notification colour
+  background-color: $bg2; // a step up from the panel's bg0
+  padding: 4px 14px;
+  border-radius: 14px; // pill: half the label height
+  transition: color 0.5s, background-color 0.3s;
+}
+
+.notif_clear_all:hover .notif_clear_all_label {
+  color: $fg2;
+  background-color: $bg3;
+}
+
+// nothing to clear: flat, no highlight
+.notif_clear_all_label.disabled,
+.notif_clear_all:hover .notif_clear_all_label.disabled {
+  color: $bg3;
+  background-color: rgba($bg2, 0.4);
+}
+
+.notif_inhibited {
+  margin: 0 20px 4px 20px;
+  font-size: 14px;
+  color: $orange; // the bar's inhibited colour
+}
+
+// --- list -------------------------------------------------------------------
+
+.notif_list {
+  padding: 8px 20px 30px 20px;
+}
+
+.notif_empty {
+  margin-top: 120px;
+  color: $fg1;
+}
+
+.notif_empty_icon {
+  font-size: 64px;
+  color: $bg3;
+}
+
+.notif_empty_text {
+  font-size: 16px;
+  margin-top: 8px;
+}
+
+// --- groups -----------------------------------------------------------------
+
+.notif_group {
+  margin-bottom: 16px;
+}
+
+.notif_group_header {
+  margin: 0 4px 8px 4px;
+}
+
+.notif_group_app {
+  font-size: 15px;
+  font-weight: bold;
+  transition: color 0.5s;
+}
+
+.notif_group_count {
+  font-size: 13px;
+  color: $bg0;
+  background-color: $fg1;
+  border-radius: 10px;
+  padding: 0 7px;
+}
+
+.notif_group_chevron {
+  font-size: 18px;
+  color: $fg1;
+  transition: color 0.5s;
+}
+
+.notif_group_toggle:hover .notif_group_app,
+.notif_group_toggle:hover .notif_group_chevron {
+  color: $fg2;
+}
+
+.notif_group_clear_label {
+  font-size: 18px;
+  color: $fg1;
+  padding: 0 4px;
+  transition: color 0.5s;
+}
+
+.notif_group_clear:hover .notif_group_clear_label {
+  color: $red;
+}
+
+// The stacked edge under a collapsed group's card: a strip of the next card.
+.notif_stack {
+  min-height: 8px;
+  margin: -3px 16px 0 16px;
+  background-color: rgba($bg1, 0.8);
+  border: 3px solid $bg3;
+  border-top-width: 0;
+  border-radius: 0 0 14px 14px;
+}
+
+// --- cards ------------------------------------------------------------------
+
+.notif_card {
+  background-color: rgba($bg1, 0.8);
+  border: 3px solid $bg3;
+  border-radius: $notif-radius;
+  box-shadow: $shadow-notif-card;
+}
+
+.notif_group .notif_card {
+  margin-bottom: 8px;
+}
+
+// GTK3's :last-child skips invisible siblings, so a collapsed group's card
+// (followed by the visible stack strip) is never last: `stacked` is set
+// explicitly instead, at creation (cards are rebuilt per update).
+.notif_group .notif_card:last-child,
+.notif_group .notif_card.stacked {
+  margin-bottom: 0;
+}
+
+.notif_main {
+  border-radius: 17px; // card radius minus its border
+  transition: background-color 0.15s;
+}
+
+.notif_main:hover {
+  background-color: rgba($bg2, 0.9);
+}
+
+.notif_content {
+  padding: 12px 48px 12px 12px; // right: room for the × button (16px margin + 24px + gap)
+}
+
+.notif_summary {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.notif_time {
+  font-size: 13px;
+  color: $fg1;
+}
+
+.notif_body {
+  font-size: 15px;
+  font-weight: normal;
+  margin-top: 4px;
+}
+
+.notif_progress {
+  margin-top: 8px;
+  trough {
+    min-height: 6px;
+    border-radius: 3px;
+    background-color: $bg3;
+  }
+  progress {
+    min-height: 6px;
+    border-radius: 3px;
+    background-color: $accent1;
+  }
+}
+
+// Far enough in to clear the 20px corner radius and the 3px border. On the
+// label, not the eventbox: GtkOverlay ignores the margins of its direct
+// children (the eventbox), which left the button on the card's border.
+.notif_close_label {
+  margin: 12px 14px 0 0;
+}
+
+.notif_close_label {
+  font-size: 16px;
+  color: $fg1;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 12px;
+  background-color: rgba($fg2, 0.1);
+  transition: color 0.5s, background-color 0.5s;
+}
+
+.notif_close:hover .notif_close_label {
+  color: $fg2;
+  background-color: rgba($fg2, 0.15);
+}
+
+.notif_actions {
+  padding: 0 12px 12px 12px;
+}
+
+.notif_action_label {
+  font-size: 14px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background-color: rgba($bg3, 0.8);
+  transition: background-color 0.15s, color 0.5s;
+}
+
+.notif_action:hover .notif_action_label {
+  background-color: $bg2;
+  color: $fg2;
+}
+
+// --- popups -----------------------------------------------------------------
+// Same cards as the center, 476px wide like swaync's popups (window 516px =
+// card + 2 x 20px). Each slot's revealer clips at its bounds, so the shadow
+// room is the slot's own padding: 20px at the sides, 4px above and 16px below
+// (offset 4 + 2.5 * 6 = 19: the faint tail cut at 16px is under 1% alpha), a
+// 20px gap between cards and 8px below the bar like the center panel.
+
+// eww puts the window name on the toplevel as a class; keep it transparent.
+.notif_popups {
+  background-color: $transparent;
+}
+
+.notif_popup_stack {
+  padding-top: 4px;
+}
+
+.notif_popup_slot {
+  padding: 4px 20px 16px 20px;
+}

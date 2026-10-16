@@ -71,10 +71,12 @@ done <<< "$monitor_data"
 # eww's own bookkeeping is not enough: when outputs vanish under it (suspend
 # while docked, then resume) the bar layer surfaces get destroyed but the
 # daemon keeps listing the windows as open, so the bars stay gone. Also require
-# an "eww-bar" layer to actually be mapped on each wanted monitor.
+# an "eww-bar" layer to actually be mapped on each wanted monitor, by a live
+# client: Hyprland keeps a closed layer listed with pid -1 while its unmap
+# animation is pending, for a long time with the displays off.
 active=$(eww active-windows 2>/dev/null | sed -n 's/^\(bar-[^:]*\):.*/\1/p' | sort)
 mapped=$(hyprctl layers -j 2>/dev/null | jq -r 'to_entries[]
-    | select([.value.levels[][] | .namespace] | index("eww-bar"))
+    | select([.value.levels[][] | select(.pid > 0) | .namespace] | index("eww-bar"))
     | "bar-\(.key)"' | sort)
 wanted=$(cut -d' ' -f2 <<< "$desired" | grep -v '^$' | sort)
 [[ "$active" == "$wanted" && "$mapped" == "$wanted" ]] && exit 0
@@ -121,4 +123,9 @@ while IFS=' ' read -r idx id name; do
     [[ -n "$id" ]] || continue
     eww open bar --screen "$idx" --id "$id" --arg monitor="$name" > /dev/null 2>&1 9>&-
 done <<< "$desired"
+
+# The notification popup window died with the old daemon; notifd opens it
+# again (on the focused monitor) if popups are showing. notifctl never starts
+# anything, so without notifd (Plasma, not deployed yet) this just fails.
+timeout 3 "$HOME/.dotfiles/scripts/notifctl" reopen > /dev/null 2>&1 9>&-
 exit 0

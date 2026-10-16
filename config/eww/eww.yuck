@@ -1,6 +1,7 @@
 (deflisten currentvolume `scripts/getvol`)
 (deflisten volumemuted `scripts/getmute`)
-(deflisten notifications :initial `{"count": 0, "dnd": false, "visible": false, "inhibited": false}` `scripts/notifications`)
+(deflisten notif_bar :initial '{"count":0,"dnd":false,"inhibited":false,"center_open":false}'
+  "~/.config/eww/scripts/notifd-listen bar")  ; scripts/notifd's state (widgets/notifications.yuck)
 ;; Media state (`player`) comes from widgets/dashboard.yuck's deflisten: playerctld
 ;; follows the most recently active player, so no per-player bookkeeping here.
 ;; Color per monitor for text straight on the wallpaper, picked from the
@@ -32,6 +33,7 @@
 
 (include "widgets/osd.yuck")
 (include "widgets/dashboard.yuck")
+(include "widgets/notifications.yuck")
 
 ; Opened by scripts/launch-eww-bars with --arg monitor=<Hyprland connector>
 ; (eww 0.5 refuses to open a window when a declared arg is missing, even a
@@ -422,23 +424,24 @@
 
 (defwidget notifications []
   (box
-    :class "notifications ${notifications.dnd ? 'dnd_on' : notifications.inhibited ? 'inhibited_on' : ''}"
+    :class "notifications ${notif_bar.dnd ? 'dnd_on' : notif_bar.inhibited ? 'inhibited_on' : ''}"
     :orientation "h"
     :space-evenly false
     :halign "center"
     (eventbox
       :class "notifications_eventbox"
       :cursor "pointer"
-      :tooltip "${notifications.count} notification${notifications.count == 1 ? '' : 's'}${notifications.dnd ? ' (do not disturb)' : notifications.inhibited ? ' (inhibited)' : ''}"
-      :onclick "swaync-client -t -sw"
-      :onrightclick "swaync-client -d -sw"
+      :tooltip "${notif_bar.count} notification${notif_bar.count == 1 ? '' : 's'}${notif_bar.dnd ? ' (do not disturb)' : notif_bar.inhibited ? ' (inhibited)' : ''}"
+      :timeout "1s" ; notif-center does several hyprctl/eww calls; the 200 ms default kills it
+      :onclick "~/.config/eww/scripts/notif-center toggle"
+      :onrightclick "~/.dotfiles/scripts/notifctl dnd toggle"
       (box
         :orientation "h"
         :spacing 12
         :space-evenly false
         :halign "center"
-        (label :style "font-size: 20px;" :text {notifications.dnd ? "󰂛" : notifications.inhibited ? "󰂠" : "󰂚"})
-        (label :text {notifications.count > 99 ? "99+" : notifications.count})
+        (label :style "font-size: 20px;" :text {notif_bar.dnd ? "󰂛" : notif_bar.inhibited ? "󰂠" : "󰂚"})
+        (label :text {notif_bar.count > 99 ? "99+" : notif_bar.count})
       )
     )
   )

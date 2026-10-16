@@ -232,6 +232,32 @@ hl.layer_rule({
     blur = true,
     animation = "fade",
 })
+-- eww notification center (config/eww/widgets/notifications.yuck, namespace
+-- "eww-notif-center"): a monitor-sized surface like the dashboard, but the
+-- backdrop is fully transparent (alpha 0, never blurred) and only the panel
+-- shows, like swaync's control center. Panel and cards are 0.8-0.85 alpha;
+-- their CSS shadows stay under 0.55 and are left sharp.
+hl.layer_rule({
+    name  = "eww-notif-center",
+    match = { namespace = "eww-notif-center" },
+    blur = true,
+    ignore_alpha = 0.55,
+    -- the surface covers the monitor, so the panel travels in from just off-screen
+    animation = "slide right",
+})
+-- eww notification popups (same file, namespace "eww-notif-popups"): only as
+-- tall as its cards, which are 0.8 alpha like the center's; their shadows stay
+-- under 0.55 and are left sharp. notifd maps the window once per burst, so the
+-- first cards slide in from the right edge like swaync's popups did; cards
+-- that arrive while it is up slide open in place (eww revealer), and it only
+-- unmaps once empty, so the slide-out is never seen.
+hl.layer_rule({
+    name  = "eww-notif-popups",
+    match = { namespace = "eww-notif-popups" },
+    blur = true,
+    ignore_alpha = 0.55,
+    animation = "slide right",
+})
 
 ---------------
 ---- BINDS ----
@@ -326,6 +352,27 @@ hl.on("layer.closed", function(ls)
     end
 end)
 
+-- Notification center (eww namespace "eww-notif-center", scripts/notif-center),
+-- same modal pattern as the dashboard: Escape closes it, the submap follows the
+-- layer's lifecycle. On close notifd is told too, so an `eww kill`
+-- (launch-eww-bars) or a crash can't leave its popups muted for good.
+local NOTIF_CENTER = home .. "/.config/eww/scripts/notif-center"
+local NOTIFCTL = home .. "/.dotfiles/scripts/notifctl"
+hl.define_submap("notifcenter", function()
+    hl.bind("Escape", dsp.exec_cmd(NOTIF_CENTER .. " close"))
+    hl.bind("SUPER + N", dsp.exec_cmd(NOTIF_CENTER .. " close"))
+end)
+hl.on("layer.opened", function(ls)
+    if ls.namespace == "eww-notif-center" then hl.dispatch(dsp.submap("notifcenter")) end
+end)
+hl.on("layer.closed", function(ls)
+    if ls.namespace ~= "eww-notif-center" then return end
+    hl.exec_cmd(NOTIFCTL .. " center close")
+    if hl.get_current_submap() == "notifcenter" then hl.dispatch(dsp.submap("reset")) end
+end)
+hl.bind("SUPER + N", dsp.exec_cmd(NOTIF_CENTER .. " toggle"))
+hl.bind("SUPER + SHIFT + N", dsp.exec_cmd(NOTIFCTL .. " dnd toggle"), { submap_universal = true })
+
 -- Escape on the lock screen blanks the displays right away (Plasma-style)
 -- instead of waiting for hypridle's dpms timeout. non_consuming so Escape still
 -- reaches apps; the pidof guard makes it a no-op while unlocked. Fires on
@@ -353,7 +400,8 @@ if os.getenv("HYPR_NO_AUTOSTART") ~= "1" then
         hl.exec_cmd(home .. "/.dotfiles/scripts/kded-gtkconfig off")
         -- hl.exec_cmd(home .. "/.dotfiles/scripts/launchportals.sh")
         hl.exec_cmd("uwsm app -- hyprpaper")
-        hl.exec_cmd("uwsm app -- swaync")
+        -- notifd (scripts/notifd) replaces swaync; the same unit is the D-Bus activation target
+        hl.exec_cmd("systemctl --user start notifd.service")
         hl.exec_cmd("uwsm app -- nm-applet")
         hl.exec_cmd("uwsm app -- gammastep-indicator")
         hl.exec_cmd("uwsm app -- blueman-applet")

@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Notification center window (widgets/notifications.yuck): notif-center toggle|open|close
+#
+# Same lifecycle as scripts/dashboard: a monitor-sized, focusable overlay on the
+# focused monitor, pulled up over the bar's exclusive zone (--pos 0x-<top>);
+# the transparent backdrop closes it on a click outside the panel, and Escape is
+# a Hyprland submap bind entered/left on the layer's own open/close events.
+# notifd is told about open/close (it mutes popups and refreshes the relative
+# timestamps only while the center is open).
+#
+# Bar click, SUPER+N, the backdrop and Escape all land here; `close` is
+# idempotent and safe from anywhere.
+
+set -u
+
+# NOTIF_EWW_CONFIG: run against a sandbox eww daemon (`eww -c <dir>`) for testing.
+# Every call is bounded, so a wedged eww (or hyprctl) can't hang a click, a
+# keybind or the hide-on-action close notifd runs (and leave the client behind).
+# --foreground keeps timeout in our process group (plain timeout makes its
+# own), so notifd's killpg of a stuck call also takes the eww/hyprctl client.
+eww() { timeout --foreground 5 eww ${NOTIF_EWW_CONFIG:+-c "$NOTIF_EWW_CONFIG"} "$@"; }
+hyprctl() { timeout --foreground 5 hyprctl "$@"; }
+
+cmd=${1:-}
+notifctl=$HOME/.dotfiles/scripts/notifctl
+
+# A wedged or missing daemon must never be started by a click or a keybind
+# (`eww open` auto-daemonises; a wedged daemon answers rc 0 with empty output).
+eww_up() { [ "$(eww ping 2>/dev/null)" = pong ]; }
+
+rt=${XDG_RUNTIME_DIR:-/tmp}
+state_file=${NOTIFD_RUNTIME_DIR:-$rt/notifd}/center.json
+
+focused_idx() {
+    # GDK monitor index of the focused monitor; same assumption as dashboard
+    # and launch-eww-bars (hyprctl lists monitors in GDK's order).
+    hyprctl monitors -j | jq -r 'map(.focused) | index(true) // 0'
+}
+
+reserved_top() {
+    hyprctl monitors -j | jq -r ".[$1].reserved[1] // 0"
+}
+
+# eww can list the window while its layer is gone (docked suspend/resume, see
+# launch-eww-bars), so the layer has to be mapped too; otherwise the first
+# SUPER+N would "close" an invisible center. A closed layer whose unmap
+# animation is pending stays listed with pid -1 (long, with the displays off).
+is_open() {
+    eww active-windows 2>/dev/null | grep -q '^notif_center:' &&
+        hyprctl layers -j | jq -e '[.[].levels[][]
+            | select(.namespace == "eww-notif-center" and .pid > 0)] | length > 0' >/dev/null
+}
+
+# notifd is told even when eww is down or restarting (launch-eww-bars), or its
+# popups would stay muted until the next successful open/close.
+do_close() {
+    # only if eww has it: closing a closed window logs an error in eww
+    if eww_up && eww active-windows 2>/dev/null | grep -q '^notif_center:'; then
+        eww close notif_center >/dev/null 2>&1 || true
+    fi
+    "$notifctl" center close
+}
+
+open_window() {
+    local idx top
+    idx=$(focused_idx)
+    top=$(reserved_top "$idx")
+    [[ $top =~ ^[0-9]+$ ]] || top=0
+    # The surface covers the bar (a click on it closes the center); the panel
+    # starts below it like swaync's did.
+    eww update notif_center_top="$top" 8>&-
+    # The list is seeded from the file: its deflisten only starts with the
+    # window, and the :initial shape would flash "No Notifications" on the first
+    # open after every eww restart. Its own call, and only below the kernel's
+    # 128 KiB per-argument limit (a huge history just shows the flash).
+    local size
+    size=$(stat -c %s "$state_file" 2>/dev/null) || size=
+    if [[ $size =~ ^[0-9]+$ ]] && (( size < 100000 )); then
+        eww update "notif_center_state=$(<"$state_file")" 8>&-
+    fi
+    eww open notif_center --screen "$idx" --pos "0x-$top" 8>&- || return 1
+    # Only after a successful open: a recreated window's layer.closed handler
+    # (hyprland.lua) sends `center close` asynchronously during the open, and
+    # must not land after this.
+    "$notifctl" center open
+}
+
+# Serialise check-then-act so two quick clicks can't both see "not open".
+locked() {
+    (
+        flock -w 3 8 || exit 0
+        "$@"
+    ) 8>"$rt/eww-notif-center.lock"
+}
+
+do_open()   { is_open || open_window; }
+do_toggle() { if is_open; then do_close; else open_window; fi }
+
+case "$cmd" in
+    toggle) eww_up && locked do_toggle ;;
+    open)   eww_up && locked do_open ;;
+    close)  do_close ;;
+    *)      echo "usage: notif-center toggle|open|close" >&2; exit 2 ;;
+esac

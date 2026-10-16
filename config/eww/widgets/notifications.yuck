@@ -1,0 +1,237 @@
+;; Notification center and popups for scripts/notifd.
+;;
+;; notifd owns all state; this file only renders the JSON it writes to
+;; $XDG_RUNTIME_DIR/notifd/ (scripts/notifd-listen turns each file into a
+;; deflisten). Clicks go back through scripts/notifctl.
+;;
+;; Safety: onclick strings run through `sh -c`, so they only ever interpolate
+;; notifd's integers (item.id, a.i, g.gid), never text. Only `body` is
+;; sanitised Pango markup (:markup); summary, app names, action labels and
+;; times are always :text. A `${...}` inside a JSON value is inert -- eww only
+;; evaluates expressions in this source.
+;;
+;; Window: same mechanism as the dashboard (widgets/dashboard.yuck) -- a
+;; monitor-sized, focusable overlay pulled up over the bar's exclusive zone
+;; (--pos 0x-<bar height>); the backdrop is fully transparent, so it looks like
+;; swaync's panel. A click outside the panel (bar included) lands on the
+;; backdrop and closes it; Escape is the Hyprland "notifcenter" submap,
+;; entered/left on the layer's open/close events. The panel and every
+;; clickable part are eventboxes, and the backdrop is never their ancestor,
+;; so their clicks never reach it.
+;; scripts/notif-center opens it on the focused monitor and tells notifd.
+;;
+;; Center cards are rebuilt on every center.json line (eww's `for` doesn't
+;; diff); popup cards are not, so card state must survive updates in place:
+;; the critical border is the card's own inline :style (border-color from the
+;; @notif_critical named colour in _notifications.scss), never a class toggled
+;; on the container (the eww quirk noted in osd.yuck). An eww :style provider
+;; outranks the stylesheet's .notif_card border (same priority, added later;
+;; checked with GTK 3.24) and resets cleanly to "".
+;;
+;; Optional parts toggle through notif_shown, not :visible: eww re-applies a
+;; widget's creation-time :visible on its first map, and a popup card is first
+;; mapped when its slot is first revealed -- long after creation, so the body,
+;; progress bar and buttons of every later popup came up hidden.
+(defwidget notif_shown [show]
+  (revealer :transition "none" :reveal show
+    (children)))
+
+(defvar notif_center_top 0)  ; bar height on the open monitor (scripts/notif-center)
+
+(deflisten notif_center_state :initial '{"empty":true,"groups":[]}'
+  "~/.config/eww/scripts/notifd-listen center")
+
+(defwindow notif_center
+  :monitor 0                     ; overridden per call: eww open notif_center --screen N
+  :namespace "eww-notif-center"  ; Hyprland layer rule (blur, slide right) + Escape submap
+  :stacking "overlay"
+  :exclusive false
+  :focusable true                ; keys land in GTK, not in the window underneath
+  :geometry (geometry :anchor "top center" :width "100%" :height "100%")
+  (notif_center))
+
+(defwidget notif_center []
+  ;; No overlay and no CSS margin anywhere near a click area: GtkOverlay puts
+  ;; each overlaid child in its own GdkWindow, and margins there moved the
+  ;; drawing but not the input (click areas sat above their graphics). The
+  ;; backdrop is a plain sibling of the panel column instead, and the room
+  ;; around the panel is made of sized spacer eventboxes that close too.
+  (box :orientation "h" :space-evenly false
+    (notif_backdrop :hexpand true)
+    (box :orientation "v" :space-evenly false
+      (notif_backdrop :height {notif_center_top + 8})  ; the bar + a gap
+      ;; The shadow sits on a plain outer box: an eventbox's GdkWindow would clip it.
+      (box :class "notif_panel_shell" :vexpand true
+        (eventbox :class "notif_panel_catch"
+          (box :class "notif_panel" :orientation "v" :space-evenly false
+            (notif_header)
+            (label :class "notif_inhibited" :visible {notif_bar.inhibited} :xalign 0
+                   :text "󰂠  Notifications are inhibited by an app")
+            (scroll :class "notif_scroll" :vscroll true :hscroll false :vexpand true
+              (box :class "notif_list" :orientation "v" :space-evenly false
+                (box :class "notif_empty" :visible {notif_center_state.empty}
+                     :orientation "v" :space-evenly false :vexpand true :valign "center"
+                  (label :class "notif_empty_icon" :text "󰂚")
+                  (label :class "notif_empty_text" :text "No Notifications"))
+                (for g in {notif_center_state.groups}
+                  (notif_group :g g)))))))
+      (notif_backdrop :height 20))
+    (notif_backdrop :width 20)))
+
+;; Transparent click-outside area: any click closes the center.
+(defwidget notif_backdrop [?hexpand ?width ?height]
+  (eventbox :class "notif_backdrop" :hexpand {hexpand ?: false}
+            :width {width ?: 0} :height {height ?: 0}
+            :timeout "1s"
+            :onclick "~/.config/eww/scripts/notif-center close"
+    (box)))
+
+(defwidget notif_header []
+  (box :class "notif_header" :orientation "v" :space-evenly false
+    (label :class "notif_title" :xalign 0 :text "Notifications")
+    ;; Controls on their own row, each eventbox only as wide as its content
+    ;; (:halign + a spacer box). No :visible on these eventboxes: an eventbox
+    ;; hidden when the window is built (the :initial state is empty) ended up
+    ;; taking every click on the header row -- Clear All dims instead.
+    (box :class "notif_controls" :orientation "h" :space-evenly false
+      (eventbox :class "notif_dnd" :halign "start" :cursor "pointer" :timeout "1s"
+                :tooltip {notif_bar.dnd ? "Do Not Disturb is on: only critical notifications pop up"
+                                        : "Do Not Disturb is off"}
+                :onclick "~/.dotfiles/scripts/notifctl dnd toggle"
+        (box :orientation "h" :space-evenly false :spacing 8
+          (label :class "notif_dnd_switch ${notif_bar.dnd ? 'on' : 'off'}"
+                 :text {notif_bar.dnd ? "󰨚" : "󰨙"})
+          (label :class "notif_dnd_label" :text "Do Not Disturb")))
+      (box :hexpand true)
+      (eventbox :class "notif_clear_all" :halign "end" :cursor "pointer" :timeout "1s"
+                :tooltip {notif_center_state.empty ? "Nothing to clear" : "Dismiss all notifications"}
+                :onclick "~/.dotfiles/scripts/notifctl clear"
+        (label :class "notif_clear_all_label ${notif_center_state.empty ? 'disabled' : ''}"
+               :text "Clear All")))))
+
+;; One app's notifications. A single notification renders as a bare card; more
+;; get a header (expand/collapse, dismiss all) and, collapsed, only the newest
+;; card with a stacked edge under it (notifd sends just that one item).
+(defwidget notif_group [g]
+  (box :class "notif_group" :orientation "v" :space-evenly false
+    (box :class "notif_group_header" :visible {g.count > 1} :orientation "h" :space-evenly false
+      (eventbox :class "notif_group_toggle" :cursor "pointer" :hexpand true
+                :tooltip {g.expanded ? "Collapse ${g.app}" : "Show all ${g.count} from ${g.app}"}
+                :onclick "~/.dotfiles/scripts/notifctl group-toggle ${g.gid}"
+        (box :orientation "h" :space-evenly false :spacing 10
+          (image :class "notif_group_icon" :path {g.icon} :image-width 24 :image-height 24)
+          (label :class "notif_group_app" :xalign 0 :limit-width 28 :text {g.app})
+          (label :class "notif_group_count" :text {g.count})
+          (label :class "notif_group_chevron" :text {g.expanded ? "󰅃" : "󰅀"})))
+      (eventbox :class "notif_group_clear" :cursor "pointer"
+                :tooltip "Dismiss all from ${g.app}"
+                :onclick "~/.dotfiles/scripts/notifctl group-clear ${g.gid}"
+        (label :class "notif_group_clear_label" :text "󰅖")))
+    (for item in {g.items}
+      (notif_card :item item :stacked {g.count > 1 && !g.expanded}))
+    (box :class "notif_stack" :visible {g.count > 1 && !g.expanded})))
+
+;; One notification. Body click = the app's default action (or dismiss when it
+;; has none), × = dismiss, buttons = the app's actions (i 0 = "Copy <2FA code>").
+;; An empty popup slot has icon "": images then load notif-blank.svg, as eww
+;; logs an error for every image with a missing path on every update.
+;; Clicks get 1s: notifctl is a busctl round-trip, eww kills it after 200ms.
+(defwidget notif_card [item ?stacked]
+  (box :class "notif_card ${(stacked ?: false) ? 'stacked' : ''}"
+       :style {item.urgency == 2 ? "border-color: @notif_critical;" : ""}
+       :orientation "v" :space-evenly false
+    (overlay
+      (eventbox :class "notif_main" :cursor "pointer" :timeout "1s"
+                :tooltip "${item.app} · ${item.clock}"
+                :onclick "~/.dotfiles/scripts/notifctl default ${item.id}"
+        (box :class "notif_content" :orientation "h" :space-evenly false :spacing 12
+          (overlay :class "notif_icon_box" :valign "start"
+            (notif_shown :show {item.icon != ""}
+              (image :class "notif_icon" :image-width 64 :image-height 64
+                     :path {item.icon != "" ? item.icon : "${EWW_CONFIG_DIR}/widgets/notif-blank.svg"}))
+            (box :halign "end" :valign "end"
+              (notif_shown :show {item.badge != ""}
+                (image :class "notif_badge" :image-width 22 :image-height 22
+                       :path {item.badge != "" ? item.badge : "${EWW_CONFIG_DIR}/widgets/notif-blank.svg"}))))
+          ;; centred against the 64 px icon; taller text simply fills the card
+          (box :class "notif_text" :orientation "v" :space-evenly false :hexpand true :valign "center"
+            (box :orientation "h" :space-evenly false :spacing 8
+              (label :class "notif_summary" :hexpand true :xalign 0 :limit-width 30
+                     :text {item.summary != "" ? item.summary : item.app})
+              (label :class "notif_time" :text {item.time}))
+            ;; eww ellipsizes every label unless :show-truncated false (which
+            ;; leaves markup untouched); 0.6 has no :wrap-mode or :lines, so
+            ;; notifd caps the body at 10 lines and breaks long words with
+            ;; zero-width spaces, and the scroll keeps the panel from widening
+            (notif_shown :show {item.body != ""}
+              (label :class "notif_body" :xalign 0
+                     :wrap true :show-truncated false :markup {item.body}))
+            (notif_shown :show {item.progress >= 0}
+              (progress :class "notif_progress"
+                        :orientation "h" :value {item.progress >= 0 ? item.progress : 0})))))
+      (eventbox :class "notif_close" :halign "end" :valign "start" :cursor "pointer"
+                :timeout "1s" :tooltip "Dismiss"
+                :onclick "~/.dotfiles/scripts/notifctl dismiss ${item.id}"
+        (label :class "notif_close_label" :text "󰅖")))
+    (notif_shown :show {arraylength(item.actions) > 0}
+      (box :class "notif_actions" :orientation "h" :space-evenly true :spacing 8
+        (for a in {item.actions}
+          (eventbox :class "notif_action" :cursor "pointer" :timeout "1s" :tooltip {a.label}
+                    :onclick "~/.dotfiles/scripts/notifctl action ${item.id} ${a.i}"
+            (label :class "notif_action_label" :limit-width 16 :text {a.label})))))))
+;; ---- popups -----------------------------------------------------------------
+;;
+;; notifd opens this window when a burst starts and closes it once the last
+;; popup is gone (scripts/notif-popups), so it is never left on screen empty:
+;; a layer surface can't let clicks through, which is also why it has no fixed
+;; height and is only as tall as the cards it shows. Non-focusable, on the
+;; focused monitor; a non-exclusive surface is placed below the bar's zone.
+;;
+;; Five fixed slots (SLOTS in notifd), no `for`, each fed by its own file and
+;; deflisten: a progress line re-renders only its own card, and an update never
+;; rebuilds the cards around the pointer. A slot is revealed while used and
+;; not leaving; notifd frees it LEAVE_MS (250) after setting `leaving`, i.e.
+;; once the 200ms revealer has closed. The first cards of a burst arrive with
+;; the window (the Hyprland layer rule slides it in), later ones slide open in
+;; place. Hover pauses the popup's timeout (hold/release); clicks as in the
+;; center.
+
+;; EMPTY_SLOT in notifd and notifd-listen: the full shape, so no field is null
+(deflisten notif_popup0 :initial '{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}'
+  "~/.config/eww/scripts/notifd-listen popup 0")
+(deflisten notif_popup1 :initial '{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}'
+  "~/.config/eww/scripts/notifd-listen popup 1")
+(deflisten notif_popup2 :initial '{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}'
+  "~/.config/eww/scripts/notifd-listen popup 2")
+(deflisten notif_popup3 :initial '{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}'
+  "~/.config/eww/scripts/notifd-listen popup 3")
+(deflisten notif_popup4 :initial '{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}'
+  "~/.config/eww/scripts/notifd-listen popup 4")
+
+(defwindow notif_popups
+  :monitor 0                     ; overridden per call: eww open notif_popups --screen N
+  :namespace "eww-notif-popups"  ; Hyprland layer rule (blur, slide right)
+  :stacking "overlay"
+  :exclusive false
+  :focusable false
+  :geometry (geometry :anchor "top right" :width "516px") ; 476px card + 2 x 20px shadow room
+  (notif_popup_stack))
+
+(defwidget notif_popup_stack []
+  (box :class "notif_popup_stack" :orientation "v" :space-evenly false
+    (notif_popup :s notif_popup0)
+    (notif_popup :s notif_popup1)
+    (notif_popup :s notif_popup2)
+    (notif_popup :s notif_popup3)
+    (notif_popup :s notif_popup4)))
+
+;; The revealer clips to its allocation (own GdkWindow, like an eventbox), so
+;; the card's shadow room is the padding of the box inside it.
+(defwidget notif_popup [s]
+  (revealer :reveal {s.used && !s.leaving}
+            :transition "slidedown" :duration "200ms"
+    (eventbox :timeout "1s"
+              :onhover "~/.dotfiles/scripts/notifctl hold ${s.id}"
+              :onhoverlost "~/.dotfiles/scripts/notifctl release ${s.id}"
+      (box :class "notif_popup_slot" :orientation "v" :space-evenly false
+        (notif_card :item s)))))

@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# deflisten for scripts/notifd's state files: notifd-listen bar|center|popup <0-4>
+#
+# Prints the file's JSON line, then again whenever notifd replaces it. notifd
+# writes via temp file + rename, so the directory is watched (moved_to) and
+# events are filtered by name; the inotify stream also sees the other files
+# and the temp names. Each window (and each popup slot) references only its
+# own file, so writes to the others cost nothing. Prints the empty shape while
+# notifd (or its runtime dir) is missing, and re-watches if the dir goes away;
+# deflisten does not respawn a script that exits.
+
+name=$1
+case $name in popup) name=popup$2 ;; esac
+dir=${NOTIFD_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/notifd}
+file=$dir/$name.json
+
+case $name in
+  bar)    empty='{"count":0,"dnd":false,"inhibited":false,"center_open":false}' ;;
+  center) empty='{"empty":true,"groups":[]}' ;;
+  # EMPTY_SLOT in notifd (slots 0..SLOTS-1); the full shape, so no card field is null
+  popup[0-4]) empty='{"used":false,"leaving":false,"id":0,"app":"","summary":"","body":"","text":"","icon":"","badge":"","urgency":1,"progress":-1,"actions":[],"has_default":false,"time":"","clock":""}' ;;
+  *) echo "usage: notifd-listen bar|center|popup <0-4>" >&2; exit 2 ;;
+esac
+
+last=
+emit() {
+  local line
+  line=
+  [[ -r $file ]] && line=$(<"$file")
+  [[ -n $line ]] || line=$empty
+  [[ $line == "$last" ]] && return
+  last=$line
+  printf '%s\n' "$line"
+}
+
+# eww stops a listener with SIGTERM; take the watcher down with it.
+trap '[[ -n ${W_PID:-} ]] && kill "$W_PID" 2>/dev/null; exit 0' TERM INT EXIT
+
+# eww signals its listeners one by one while shutting down and can exit before
+# reaching them all (seen with `eww kill`). An orphan only died on its next
+# write, which for a popup slot can be a long way off: leave once reparented.
+parent=$PPID
+orphaned() {
+  local stat
+  read -r stat < /proc/$$/stat || return 1
+  stat=${stat##*) }         # "<state> <ppid> ..." after "pid (comm) "
+  set -- $stat
+  [[ $2 != "$parent" ]]
+}
+
+while true; do
+  if [[ -d $dir ]]; then
+    # Emit only once the watch is up ("Watches established." on stderr), so a
+    # write between the first read and the watch can't be missed. The loop
+    # ends when inotifywait does (dir deleted).
+    coproc W { exec inotifywait -m -e moved_to -e close_write -e delete_self --format %f "$dir" 2>&1; }
+    while read -r f <&"${W[0]}"; do
+      orphaned && exit 0
+      case $f in
+        "Watches established.") emit ;;
+        "$name.json") emit ;;
+      esac
+    done
+    wait "$W_PID" 2>/dev/null
+    emit    # inotifywait failed (watch limits, EACCES): degrade to a 1 s poll
+  else
+    emit
+  fi
+  orphaned && exit 0
+  sleep 1
+done

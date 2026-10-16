@@ -1,0 +1,57 @@
+#!/bin/sh
+# notifctl — control scripts/notifd (eww onclick handlers, keybinds).
+#
+#   notifctl dismiss <id>            notifctl action <id> <i>   (0 = copy 2FA code)
+#   notifctl default <id>            notifctl clear
+#   notifctl group-clear <gid>       notifctl group-toggle <gid>
+#   notifctl dnd on|off|toggle       notifctl center open|close|toggle
+#   notifctl inhibit add|remove <name>
+#   notifctl hold <id>               notifctl release <id>
+#   notifctl reopen                  (popup window, after an eww daemon restart)
+#
+# Calls the private se.dotfiles.Notifd interface with auto-start off: that name
+# has no activation file, so a control call can never start a notification
+# server behind notifd.service's back.
+
+call() {
+  method=$1 sig=$2
+  shift 2
+  busctl --user --auto-start=no --quiet call se.dotfiles.Notifd /se/dotfiles/Notifd \
+    se.dotfiles.Notifd "$method" $sig "$@"
+}
+
+uint() {
+  case $1 in
+    '' | *[!0-9]*) echo "notifctl: not a number: $1" >&2; exit 2 ;;
+  esac
+}
+
+mode() {
+  case $1 in
+    on | off | open | close | toggle) ;;
+    *) echo "notifctl: bad mode: $1" >&2; exit 2 ;;
+  esac
+}
+
+cmd=$1
+[ $# -gt 0 ] && shift
+case $cmd in
+  dismiss)      uint "$1"; call Dismiss u "$1" ;;
+  default)      uint "$1"; call InvokeDefault u "$1" ;;
+  action)       uint "$1"; uint "$2"; call Invoke uu "$1" "$2" ;;
+  clear)        call Clear "" ;;
+  group-clear)  uint "$1"; call ClearGroup u "$1" ;;
+  group-toggle) uint "$1"; call ToggleGroup u "$1" ;;
+  dnd)          mode "$1"; call SetDnd s "$1" ;;
+  center)       mode "$1"; call SetCenter s "$1" ;;
+  hold)         uint "$1"; call Hold u "$1" ;;
+  release)      uint "$1"; call Release u "$1" ;;
+  reopen)       call Reopen "" ;;
+  inhibit)
+    case $1 in add | remove) ;; *) echo "notifctl: inhibit add|remove <name>" >&2; exit 2 ;; esac
+    [ -n "$2" ] || { echo "notifctl: inhibit needs a name" >&2; exit 2; }
+    call Inhibit ss "$1" "$2" ;;
+  *)
+    sed -n '2,11s/^# \{0,1\}//p' "$0" >&2
+    exit 2 ;;
+esac

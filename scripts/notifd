@@ -1,0 +1,1338 @@
+#!/usr/bin/env python3
+"""Desktop notification server for the eww bar, popups and notification center.
+
+Owns org.freedesktop.Notifications (spec 1.3) on the session bus and keeps all
+notification state; eww only renders it. Runs as notifd.service (systemd user
+unit, also the D-Bus activation target), never as an eww deflisten child:
+launch-eww-bars restarts the eww daemon on every bar-set change, and the bus
+name must survive that.
+
+State for eww, rewritten atomically (tmp + rename) at most ~10 times a second
+and only when it changed, under $XDG_RUNTIME_DIR/notifd/:
+
+    bar.json     {"count", "dnd", "inhibited", "center_open"}
+    popup<k>.json  <item> + {"used", "leaving"}, one file per slot
+                 (k = 0..SLOTS-1): a progress line rewrites only its own
+                 slot, so eww re-renders one card instead of all of them.
+                 Content-only changes of a slot are throttled to POPUP_MIN_MS;
+                 a slot filling, leaving or freeing is written at once.
+    center.json  {"empty", "groups": [{"gid", "app", "icon", "count",
+                                       "expanded", "items": [<item>]}]}
+                 (collapsed groups carry only their newest item; "count" has all)
+
+    <item> = {"id", "app", "summary", "body" (Pango markup), "text" (plain
+              body), "icon" (path), "badge" (app icon path when "icon" is an
+              image), "urgency" 0-2, "progress" (-1 or 0-100), "actions":
+              [{"i", "label"}], "has_default", "time" ("5m"), "clock" ("14:03")}
+
+The popup window (config/eww/scripts/notif-popups) is opened and closed by
+notifd itself: once per burst, when the first slot fills and ~POPUP_CLOSE_MS
+after the last one has animated out. eww leaks a little on every open/close,
+and a layer surface can't let clicks through, so it is never left open empty.
+
+eww talks back through scripts/notifctl, which calls the private interface
+se.dotfiles.Notifd. Only integers (ids, action and group indices) cross that
+boundary, never notification text or app-supplied action keys: eww runs
+onclick handlers through `sh -c`.
+
+History (newest first, capped) and the DND flag persist in
+~/.local/state/notifd/history.json; image-data pixels are cached as PNGs in
+~/.cache/notifd/. NOTIFD_RUNTIME_DIR / NOTIFD_STATE_DIR / NOTIFD_CACHE_DIR
+override the three directories (testing on a private bus).
+"""
+import hashlib
+import html
+import json
+import math
+import os
+import queue
+import re
+import signal
+import subprocess
+import stat
+import sys
+import tempfile
+import threading
+import time
+
+# Gtk is only used for icon theme lookups; keep it from starting the
+# accessibility bus and gvfs.
+os.environ.setdefault("NO_AT_BRIDGE", "1")
+os.environ.setdefault("GIO_USE_VFS", "local")
+
+import gi  # noqa: E402
+
+gi.require_version("GdkPixbuf", "2.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
+
+try:
+    gi.require_version("GioUnix", "2.0")
+    from gi.repository import GioUnix
+    DesktopAppInfo = GioUnix.DesktopAppInfo
+except (ImportError, ValueError):
+    DesktopAppInfo = Gio.DesktopAppInfo
+
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+RUNTIME_DIR = os.environ.get("NOTIFD_RUNTIME_DIR", os.path.join(RUNTIME, "notifd"))
+STATE_DIR = os.environ.get("NOTIFD_STATE_DIR", os.path.expanduser("~/.local/state/notifd"))
+CACHE_DIR = os.environ.get("NOTIFD_CACHE_DIR", os.path.expanduser("~/.cache/notifd"))
+HISTORY_FILE = os.path.join(STATE_DIR, "history.json")
+GTK_SETTINGS = os.path.expanduser("~/.config/gtk-3.0/settings.ini")
+CENTER_CMD = os.path.expanduser("~/.config/eww/scripts/notif-center")
+POPUPS_CMD = os.path.expanduser("~/.config/eww/scripts/notif-popups")
+
+SLOTS = 5                     # must match the popup slots in notifications.yuck
+HISTORY_MAX = 100
+TIMEOUTS = {0: 5000, 1: 10000, 2: 0}  # ms per urgency (low, normal, critical); 0 = never
+CRITICAL_PER_APP = 3          # of the SLOTS, see show_popup
+HOLD_MIN_MS = 1500            # time left after a hovered popup is released
+LEAVE_MS = 250                # popup exit: eww's revealer :duration (200ms) + a frame of slack
+POPUP_CLOSE_MS = 300          # close the popup window this long after the last slot freed
+WRITE_MIN_MS = 100            # coalesce state writes to ~10 Hz
+HISTORY_DEBOUNCE_MS = 1000
+RELEASE_DELAY_MS = 1000       # cached images outlive their last state line (release_files)
+IMAGE_MAX = 256               # px, image-data is scaled down to fit
+SUMMARY_MAX, BODY_MAX = 200, 2000
+BODY_LINES = 10               # a card never grows past this many body lines
+ACTIONS_MAX, ACTION_KEY_MAX = 8, 200
+PATH_IMAGE_MAX_BYTES = 8 << 20  # app-supplied image files
+ICON_CACHE_MAX = 500
+CENTER_MIN_MS = 500           # center.json rewrites at most twice a second (eww rebuilds every card)
+POPUP_MIN_MS = 250            # content-only rewrites of one popup slot (progress spam)
+ICON_SIZE = 64
+
+NOTIF_PATH = "/org/freedesktop/Notifications"
+NOTIF_IFACE = "org.freedesktop.Notifications"
+CTL_NAME = CTL_IFACE = "se.dotfiles.Notifd"
+CTL_PATH = "/se/dotfiles/Notifd"
+
+INTROSPECTION = f"""
+<node>
+  <interface name="{NOTIF_IFACE}">
+    <method name="GetCapabilities"><arg direction="out" type="as"/></method>
+    <method name="Notify">
+      <arg direction="in" type="s" name="app_name"/>
+      <arg direction="in" type="u" name="replaces_id"/>
+      <arg direction="in" type="s" name="app_icon"/>
+      <arg direction="in" type="s" name="summary"/>
+      <arg direction="in" type="s" name="body"/>
+      <arg direction="in" type="as" name="actions"/>
+      <arg direction="in" type="a{{sv}}" name="hints"/>
+      <arg direction="in" type="i" name="expire_timeout"/>
+      <arg direction="out" type="u"/>
+    </method>
+    <method name="CloseNotification"><arg direction="in" type="u" name="id"/></method>
+    <method name="GetServerInformation">
+      <arg direction="out" type="s"/><arg direction="out" type="s"/>
+      <arg direction="out" type="s"/><arg direction="out" type="s"/>
+    </method>
+    <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
+    <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
+  </interface>
+  <interface name="{CTL_IFACE}">
+    <method name="Dismiss"><arg direction="in" type="u"/></method>
+    <method name="Invoke"><arg direction="in" type="u"/><arg direction="in" type="u"/></method>
+    <method name="InvokeDefault"><arg direction="in" type="u"/></method>
+    <method name="Clear"/>
+    <method name="ClearGroup"><arg direction="in" type="u"/></method>
+    <method name="ToggleGroup"><arg direction="in" type="u"/></method>
+    <method name="SetDnd"><arg direction="in" type="s"/><arg direction="out" type="b"/></method>
+    <method name="Inhibit"><arg direction="in" type="s"/><arg direction="in" type="s"/></method>
+    <method name="Hold"><arg direction="in" type="u"/></method>
+    <method name="Release"><arg direction="in" type="u"/></method>
+    <method name="SetCenter"><arg direction="in" type="s"/><arg direction="out" type="b"/></method>
+    <method name="Reopen"/>
+  </interface>
+</node>
+"""
+
+# Restored history items are rebuilt from these (type-checked) fields only.
+RESTORE_DEFAULTS = {
+    "id": 0, "app": "", "app_name": "", "entry": "", "summary": "", "body": "", "text": "",
+    "icon": "", "badge": "", "urgency": 1, "progress": -1, "actions": [], "has_default": False,
+    "code": "", "ts": 0.0, "sender": "", "resident": False, "stack_tag": "",
+    "transient": False, "timeout": 0, "expires": False,
+}
+
+# An unused popup slot. notifd-listen and the yuck :initial use the same shape
+# (icon "" -> the card shows no image), so eww never sees missing fields.
+EMPTY_SLOT = {
+    "used": False, "leaving": False, "id": 0, "app": "", "summary": "",
+    "body": "", "text": "", "icon": "", "badge": "", "urgency": 1, "progress": -1,
+    "actions": [], "has_default": False, "time": "", "clock": "",
+}
+
+CAPABILITIES = ["actions", "body", "body-markup", "persistence", "icon-static"]
+
+# NotificationClosed reasons
+EXPIRED, DISMISSED, CLOSED = 1, 2, 3
+
+# eww 0.6 labels wrap at word boundaries only: break runs of 24+ printable
+# ASCII characters (URLs, hashes, base64) with zero-width spaces so they still
+# wrap. ASCII only: Pango already breaks Thai/CJK itself, and a break inside
+# any other script could split a grapheme cluster (marks, ZWJ emoji, keycaps).
+LONG_WORD = re.compile(r"([!-~]{24})(?=[!-~])")
+CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+# Only exact tags count as markup; anything else (`a<b then c>`, `List<String>`)
+# stays literal text. Groups: (closing, simple tag) or (closing, a) or img.
+TAG = re.compile(r"<(/?)(b|i|u|strong|em)\s*>|<(/?)(a)(?:\s[^<>]*)?>|<(img)(?:\s[^<>]*)?/?>", re.I)
+BR = re.compile(r"<br\s*/?>", re.I)
+# 2FA: a code next to a word that says it is one (English + Swedish)
+CODE_WORDS = re.compile(
+    r"\b(code|otp|passcode|verification|verify|2fa|two-factor|one-time|security code|"
+    r"kod|engångskod|verifieringskod|säkerhetskod|bekräftelsekod)", re.I)
+CODE = re.compile(r"(?<![\d.,:/-])(\d{4,8}|\d{3}[- ]\d{3})(?![\d.,:/-])")
+
+
+def log(*args):
+    print("notifd:", *args, file=sys.stderr, flush=True)
+
+
+def clean(text, limit):
+    return CONTROL_CHARS.sub("", text or "")[:limit]
+
+
+def to_markup(body):
+    """App body markup -> safe Pango markup and plain text.
+
+    The spec's markup is a small HTML subset, and apps send raw & and < too.
+    Text is unescaped once, then escaped for Pango; only b/i/u survive (links
+    become underlined text: a body click is the default action, not a link);
+    br becomes a newline, img is dropped, any other <...> is literal text.
+    Unbalanced tags are closed or skipped so the result always parses.
+    """
+    body = BR.sub("\n", body)
+    # collapse runs of blank lines, cap the line count (tags left open by the
+    # cut are closed below)
+    body = "\n".join(re.sub(r"\n[ \t]*(?:\n[ \t]*)+", "\n\n", body).split("\n")[:BODY_LINES])
+    out, plain, stack = [], [], []
+    pos = 0
+    for m in TAG.finditer(body):
+        text = html.unescape(body[pos:m.start()])
+        out.append(GLib.markup_escape_text(LONG_WORD.sub("\\1\u200b", text)))
+        plain.append(text)
+        pos = m.end()
+        if m.group(5):  # img
+            continue
+        closing, name = (m.group(1), m.group(2)) if m.group(2) else (m.group(3), m.group(4))
+        name = name.lower()
+        name = {"a": "u", "strong": "b", "em": "i"}.get(name, name)
+        if not closing:
+            stack.append(name)
+            out.append(f"<{name}>")
+        elif name in stack:
+            while stack:
+                top = stack.pop()
+                out.append(f"</{top}>")
+                if top == name:
+                    break
+    text = html.unescape(body[pos:])
+    out.append(GLib.markup_escape_text(LONG_WORD.sub("\\1\u200b", text)))
+    plain.append(text)
+    out.extend(f"</{t}>" for t in reversed(stack))
+    markup, plain = "".join(out).strip(), "".join(plain).strip()
+    try:
+        from gi.repository import Pango
+        Pango.parse_markup(markup, -1, "\0")
+    except Exception:  # noqa: BLE001 — anything unparsable falls back to text
+        markup = GLib.markup_escape_text(plain)
+    return markup, plain
+
+
+def find_code(summary, text):
+    both = f"{summary}\n{text}"
+    kw = CODE_WORDS.search(both)
+    if not kw:
+        return ""
+    # nearest after the keyword ("Beloppet 1500 kr, kod 4711" -> 4711)
+    m = CODE.search(both, kw.end()) or CODE.search(both)
+    return re.sub(r"[- ]", "", m.group(1)) if m else ""
+
+
+def relative(ts, now):
+    d = now - ts
+    if d < 60:
+        return "now"
+    if d < 600:
+        return f"{int(d // 60)}m"
+    if d < 3600:  # 5-minute steps: the open center's 60 s tick rebuilds every card
+        return f"{int(d // 300) * 5}m"
+    if time.localtime(ts)[:3] == time.localtime(now)[:3]:
+        return f"{int(d // 3600)}h"
+    if time.localtime(ts + 86400)[:3] == time.localtime(now)[:3]:
+        return "yesterday"
+    return time.strftime("%-d %b", time.localtime(ts))
+
+
+def write_atomic(path, data):
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
+class Icons:
+    """Icon names, file URIs and desktop entries -> absolute file paths."""
+
+    def __init__(self):
+        self.theme = Gtk.IconTheme.new()
+        name = self._theme_name()
+        if name:
+            self.theme.set_custom_theme(name)
+        self.cache = {}
+
+    @staticmethod
+    def _theme_name():
+        try:
+            with open(GTK_SETTINGS) as f:
+                m = re.search(r"^gtk-icon-theme-name\s*=\s*(.+?)\s*$", f.read(), re.M)
+                return m.group(1).strip("\"'") if m else None
+        except OSError:
+            return None
+
+    def lookup(self, name):
+        """A path, file:// URI or theme icon name -> path, or ""."""
+        if not name:
+            return ""
+        if name.startswith("file://"):
+            try:
+                name = GLib.filename_from_uri(name)[0]
+            except GLib.Error:
+                return ""
+        if name.startswith("/"):
+            return path_image_png(name)
+        if len(name) > 128 or "/" in name:
+            return ""
+        cached = self.cache.get(name)
+        if cached is None or (cached and not os.path.isfile(cached)):
+            if len(self.cache) >= ICON_CACHE_MAX:
+                self.cache.clear()
+            # Theme SVGs are rasterised once into the PNG cache: eww would
+            # re-run librsvg for every card on every center rebuild, and a
+            # theme change can't leave restored history pointing at dead files.
+            info = self.theme.lookup_icon(name, ICON_SIZE, 0)
+            path = path_image_png(info.get_filename()) if info else ""
+            if not path:
+                return ""   # not cached: an icon installed later still shows up
+            self.cache[name] = path
+        return self.cache[name]
+
+    def desktop(self, entry):
+        """desktop-entry hint -> (display name, icon path)."""
+        if not entry or "/" in entry:
+            return "", ""
+        try:
+            info = DesktopAppInfo.new(entry.removesuffix(".desktop") + ".desktop")
+        except TypeError:
+            info = None
+        if not info:
+            return "", ""
+        icon = info.get_icon()
+        path = ""
+        if isinstance(icon, Gio.FileIcon):
+            path = path_image_png(icon.get_file().get_path() or "")
+        elif isinstance(icon, Gio.ThemedIcon):
+            for n in icon.get_names():
+                path = self.lookup(n)
+                if path:
+                    break
+        return info.get_name() or "", path
+
+
+CACHE_NAME = re.compile(r"[0-9a-f]{40}\.png")
+CACHE_TMP = re.compile(r"[0-9a-f]{40}\.png\.tmp")   # left by a crash mid-save
+
+
+def cache_file(path):
+    """True only for PNGs notifd wrote itself. Paths come from apps (image-path,
+    app_icon), so never unlink anything that merely starts with CACHE_DIR."""
+    return bool(path) and os.path.dirname(path) == os.path.realpath(CACHE_DIR) \
+        and bool(CACHE_NAME.fullmatch(os.path.basename(path)))
+
+
+def path_image_png(path):
+    """An app-supplied image file -> a cached PNG copy (<= IMAGE_MAX px), or "".
+
+    eww loads images synchronously on its main thread with no size checks, so
+    it only ever gets files notifd wrote: the app's file is opened once
+    (O_NONBLOCK|O_NOFOLLOW, regular files only, size and pixel caps) and decoded
+    through that fd, so it can't be swapped for a FIFO or a decompression bomb
+    between the check and the load.
+    """
+    try:
+        fd = os.open(os.path.realpath(path), os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except OSError:
+        return ""
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or not 0 < st.st_size <= PATH_IMAGE_MAX_BYTES:
+            return ""
+        key = f"{st.st_dev}:{st.st_ino}:{st.st_size}:{st.st_mtime_ns}:{path}".encode()
+        out = os.path.join(os.path.realpath(CACHE_DIR), hashlib.sha1(key).hexdigest() + ".png")
+        if os.path.exists(out):
+            return out
+        src = f"/proc/self/fd/{fd}"
+        info = GdkPixbuf.Pixbuf.get_file_info(src)
+        if not info or not info[0] or not (0 < info[1] <= 4096 and 0 < info[2] <= 4096):
+            return ""
+        size = min(IMAGE_MAX, max(info[1], info[2]))
+        if info[0].get_name() == "svg":
+            size = max(size, 2 * ICON_SIZE)  # vectors scale up for free (2x for HiDPI)
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(src, size, size, True)
+        pix.savev(out + ".tmp", "png", [], [])
+        os.replace(out + ".tmp", out)
+        return out
+    except (GLib.Error, OSError, TypeError) as e:
+        log("image-path:", e)
+        return ""
+    finally:
+        os.close(fd)
+
+
+def image_data_png(variant):
+    """(iiibiiay) raw pixels -> cached PNG path, or ""."""
+    try:
+        w, h, stride, alpha, bps, channels = (variant.get_child_value(i).unpack() for i in range(6))
+        data = variant.get_child_value(6).get_data_as_bytes()
+        if not (0 < w <= 4096 and 0 < h <= 4096 and bps == 8 and channels == (4 if alpha else 3)
+                and stride >= w * channels and data.get_size() >= stride * (h - 1) + w * channels):
+            return ""
+        raw = data.get_data()
+        name = hashlib.sha1(raw + f"{w}x{h}x{stride}x{alpha}".encode()).hexdigest() + ".png"
+        path = os.path.join(os.path.realpath(CACHE_DIR), name)
+        if not os.path.exists(path):
+            pix = GdkPixbuf.Pixbuf.new_from_bytes(data, GdkPixbuf.Colorspace.RGB, alpha, 8, w, h, stride)
+            scale = min(1.0, IMAGE_MAX / max(w, h))
+            if scale < 1.0:
+                pix = pix.scale_simple(max(1, round(w * scale)), max(1, round(h * scale)),
+                                       GdkPixbuf.InterpType.BILINEAR)
+            pix.savev(path + ".tmp", "png", [], [])
+            os.replace(path + ".tmp", path)
+        return path
+    except Exception as e:  # noqa: BLE001 — a broken image never drops the notification
+        log("image-data:", e)
+        return ""
+
+
+def run_detached(argv_list):
+    """Run commands one after another in a worker thread (never block the bus)."""
+    def work():
+        for argv in argv_list:
+            try:
+                r = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, timeout=5)
+                if r.returncode == 0:
+                    return
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+    threading.Thread(target=work, daemon=True).start()
+
+
+class Serial:
+    """Run commands strictly one after another, in order, off the main loop.
+    The popup window's open and close must not overtake each other, which two
+    run_detached threads could (a close timer firing just before a new burst).
+    Each command runs in its own session so a timeout kills the whole group
+    (the script and any eww client it is stuck in), not just the script."""
+
+    TIMEOUT = 10   # notif-popups bounds each eww/hyprctl call itself (timeout 5)
+
+    def __init__(self):
+        self.q = queue.Queue()
+        self.current = None    # the Popen in flight
+        threading.Thread(target=self.work, daemon=True).start()
+
+    def put(self, argv, done=None):
+        """done(returncode) runs on the GLib main loop once argv has exited
+        (None if it could not start or was killed)."""
+        self.q.put((argv, done))
+
+    def kill_current(self):
+        p = self.current
+        if p and p.poll() is None:
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+    def drain(self, timeout):
+        """Wait (bounded) until everything queued so far has run."""
+        done = threading.Event()
+        self.q.put(done)
+        return done.wait(timeout)
+
+    def work(self):
+        while True:
+            item = self.q.get()
+            if isinstance(item, threading.Event):
+                item.set()
+                continue
+            argv, done = item
+            rc = None
+            try:
+                p = self.current = subprocess.Popen(
+                    argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, start_new_session=True)
+            except OSError as e:
+                log(f"{argv[-1]}:", e)
+                p = None
+            if p:
+                try:
+                    rc = p.wait(timeout=self.TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    log(f"{os.path.basename(argv[0])} {argv[-1]}: timed out")
+                    self.kill_current()
+                    p.wait()
+                self.current = None
+                if rc is not None and rc < 0:   # killed (kill_current from stop)
+                    rc = None
+            if done:
+                GLib.idle_add(done, rc)   # done returns None: runs once
+
+
+def focus_app(pid, entry, app):
+    """Raise a window of the app whose notification was clicked.
+
+    notifd has no surface, so it cannot hand the app an xdg-activation token
+    (ActivationToken); focus the window ourselves instead: by the sender's
+    PID, else by class against the desktop-entry/app name.
+    """
+    def work():
+        try:
+            out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True,
+                                 text=True, timeout=3).stdout
+            clients = json.loads(out or "[]")
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            return
+        names = {n.lower() for n in (entry, app) if n}
+        def matches(c):
+            classes = {(c.get("class") or "").lower(), (c.get("initialClass") or "").lower()}
+            return bool(names & classes) or any(cl.endswith("." + n) for n in names for cl in classes if cl)
+        hit = next((c for c in clients if pid and c.get("pid") == pid), None) \
+            or next((c for c in clients if matches(c)), None)
+        addr = (hit or {}).get("address", "")
+        if not re.fullmatch(r"0x[0-9a-fA-F]+", addr):
+            return
+        run_detached([["hyprctl", "dispatch", "focuswindow", f"address:{addr}"],
+                      ["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{addr}" }})']])
+    threading.Thread(target=work, daemon=True).start()
+
+
+class Notifd:
+    def __init__(self, loop):
+        self.loop = loop
+        self.conn = None
+        for d in (RUNTIME_DIR, STATE_DIR, CACHE_DIR):
+            os.makedirs(d, exist_ok=True)   # before any icon lookup: they write the cache
+        self.icons = Icons()
+        # never hand eww an empty image path
+        self.fallback_icon = self.icons.lookup("preferences-desktop-notification") \
+            or self.icons.lookup("dialog-information")
+        self.notifs = {}        # id -> notification dict (history + transient popups)
+        self.history = []       # ids, newest first
+        # {"id", "leaving", "close", "gen"} or None; a notification removed while
+        # on screen keeps its slot until the exit animation is done, rendered
+        # from "snapshot" (its item, which also keeps its cache files alive)
+        self.slots = [None] * SLOTS
+        self.gen = 0            # slot generation: stale exit timers are ignored
+        self.timers = {}        # id -> {"source", "deadline", "remaining"}
+        self.hovered = set()    # popup ids under the pointer (Hold/Release)
+        self.popups_open = False   # whether notifd asked for the popup window
+        self.popups_close_source = 0
+        self.window = Serial()  # notif-popups open/close, in order
+        self.next_id = 1
+        self.dnd = False
+        self.inhibitors = {}    # name -> refcount
+        self.center_open = False
+        self.expanded = set()   # group keys
+        self.gids = {}          # group key -> stable int id (while the group exists)
+        self.next_gid = 0
+        self.center_written = 0.0  # monotonic time of the last center.json write
+        self.center_source = 0
+        self.slot_shape = [None] * SLOTS     # (used, leaving, id) last written per slot
+        self.slot_written = [0.0] * SLOTS    # monotonic time of that write
+        self.popup_source = 0
+        self.written = {}       # file -> last content
+        self.dirty = False
+        self.flush_source = 0
+        self.last_flush = 0.0
+        self.history_source = 0
+        self.tick_source = 0
+        self.bus_id = self.saved_bus = ""
+        self.load()
+
+    # ---- persistence -------------------------------------------------------
+
+    def load(self):
+        try:
+            with open(HISTORY_FILE) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        next_id = data.get("next_id")
+        self.next_id = next_id if isinstance(next_id, int) and 0 < next_id <= 0xFFFFFFFF else 1
+        self.dnd = data.get("dnd") is True
+        self.saved_bus = data.get("bus_id") if isinstance(data.get("bus_id"), str) else ""
+        items = data.get("items")
+        for n in (items if isinstance(items, list) else [])[:HISTORY_MAX]:
+            if not (isinstance(n, dict) and isinstance(n.get("id"), int)
+                    and 0 < n["id"] <= 0xFFFFFFFF and n["id"] not in self.notifs):
+                continue
+            n = {**RESTORE_DEFAULTS, **{k: v for k, v in n.items() if k in RESTORE_DEFAULTS
+                                         and isinstance(v, type(RESTORE_DEFAULTS[k]))}}
+            if not isinstance(n["ts"], (int, float)):
+                n["ts"] = time.time()
+            n["actions"] = [a for a in n["actions"] if isinstance(a, dict)
+                            and isinstance(a.get("i"), int) and isinstance(a.get("key"), str)
+                            and isinstance(a.get("label"), str)]
+            n["urgency"] = max(0, min(2, n["urgency"]))
+            n["restored"] = True
+            self.notifs[n["id"]] = n
+            self.history.append(n["id"])
+            self.next_id = max(self.next_id, n["id"] % 0xFFFFFFFF + 1)
+        self.gc_cache()
+
+    def bus_call(self, method, args, sig, out):
+        return self.conn.call_sync(
+            "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+            method, GLib.Variant(sig, args) if sig else None, GLib.VariantType(out),
+            Gio.DBusCallFlags.NONE, 1000, None).unpack()[0]
+
+    def restored_senders(self):
+        """Keep actions of restored notifications only while their sender is
+        still connected to the same bus (notifd restarted, session didn't).
+        Unique names restart at :1.1 on every bus, so a new session's
+        NameHasOwner says nothing: compare the bus id first."""
+        try:
+            self.bus_id = self.bus_call("GetId", None, None, "(s)")
+        except GLib.Error:
+            self.bus_id = ""
+        for n in self.notifs.values():
+            if not n.get("restored") or not n.get("sender"):
+                continue
+            alive = False
+            if self.bus_id and self.bus_id == self.saved_bus:
+                try:
+                    alive = self.bus_call("NameHasOwner", (n["sender"],), "(s)", "(b)")
+                except GLib.Error:
+                    pass
+            if not alive:
+                n["sender"] = ""
+                n["actions"] = []
+                n["has_default"] = False
+
+    def save_history(self):
+        self.history_source = 0
+        keep = ("id", "app", "app_name", "entry", "summary", "body", "text", "icon", "badge",
+                "urgency", "progress", "actions", "has_default", "code", "ts", "sender",
+                "resident", "stack_tag")
+        items = [{k: self.notifs[i].get(k) for k in keep} for i in self.history]
+        try:
+            write_atomic(HISTORY_FILE, json.dumps(
+                {"next_id": self.next_id, "dnd": self.dnd, "bus_id": self.bus_id, "items": items}))
+        except OSError as e:
+            log("history:", e)
+        return False
+
+    def history_changed(self):
+        if not self.history_source:
+            self.history_source = GLib.timeout_add(HISTORY_DEBOUNCE_MS, self.save_history)
+
+    def gc_cache(self):
+        used = {n.get(k) for n in self.notifs.values() for k in ("icon", "badge")} | {self.fallback_icon}
+        cache = os.path.realpath(CACHE_DIR)
+        try:
+            for name in os.listdir(cache):
+                path = os.path.join(cache, name)
+                if (cache_file(path) and path not in used) or CACHE_TMP.fullmatch(name):
+                    os.unlink(path)
+        except OSError:
+            pass
+
+    def release_files(self, old):
+        """Unlink old's cached images RELEASE_DELAY_MS from now unless a live
+        notification (or a popup still animating out) uses them by then.
+        eww reloads every image on every update, and a state line written just
+        before the unlink can reach it just after: the file has to outlive the
+        last line that names it."""
+        files = {old.get("icon"), old.get("badge")} - {self.fallback_icon}
+        files = {f for f in files if cache_file(f)}
+        if not files:
+            return
+        def run():
+            live = list(self.notifs.values()) + [s["snapshot"] for s in self.slots if s and "snapshot" in s]
+            for f in files:
+                if not any(f in (m.get("icon"), m.get("badge")) for m in live):
+                    try:
+                        os.unlink(f)
+                    except OSError:
+                        pass
+            return False
+        GLib.timeout_add(RELEASE_DELAY_MS, run)
+
+    # ---- state files ------------------------------------------------------
+
+    def changed(self, user=False):
+        """Schedule a state write. user=True (a click in eww) also skips the
+        center.json throttle, which is only there for app-driven bursts."""
+        self.dirty = True
+        if user and self.center_source:
+            GLib.source_remove(self.center_source)
+            self.center_source = 0
+            self.center_written = 0.0
+        elif user:
+            self.center_written = 0.0
+        if user:
+            self.slot_written = [0.0] * SLOTS
+        if self.flush_source:
+            return
+        wait = max(0, WRITE_MIN_MS - int((time.monotonic() - self.last_flush) * 1000))
+        self.flush_source = GLib.timeout_add(wait, self.flush)
+
+    def flush(self):
+        self.flush_source = 0
+        self.last_flush = time.monotonic()
+        self.dirty = False
+        now = time.time()
+        self.write("bar.json", {
+            "count": len(self.history), "dnd": self.dnd,
+            "inhibited": bool(self.inhibitors), "center_open": self.center_open})
+        self.flush_popups(now)
+        self.sync_popup_window()   # after the writes: the open seeds eww from the files
+        # Progress/stack-tag spam must not rebuild every center card at 10 Hz:
+        # center.json lags by up to CENTER_MIN_MS, everything else doesn't.
+        if not self.center_source:
+            wait = CENTER_MIN_MS - int((time.monotonic() - self.center_written) * 1000)
+            if wait > 0:
+                self.center_source = GLib.timeout_add(wait, self.flush_center)
+            else:
+                self.flush_center()
+        return False
+
+    def flush_popups(self, now):
+        """One file per slot. A slot whose shape (used, leaving, id) is
+        unchanged and was written less than POPUP_MIN_MS ago waits: that is
+        a progress or stack-tag update, and the card it re-renders may be
+        under the pointer. Shape changes drive the revealer and go at once."""
+        wait = 0
+        mono = time.monotonic()
+        for k, s in enumerate(self.slots):
+            if s and "snapshot" in s:
+                slot = {"used": True, "leaving": True, **s["snapshot"]}
+            elif s and s["id"] in self.notifs:
+                n = self.notifs[s["id"]]
+                slot = {"used": True, "leaving": s["leaving"], **self.item(n, now)}
+            else:
+                slot = EMPTY_SLOT
+            shape = (slot["used"], slot["leaving"], slot["id"])
+            left = POPUP_MIN_MS - int((mono - self.slot_written[k]) * 1000)
+            if shape == self.slot_shape[k] and left > 0:
+                if self.encode(slot) != self.written.get(f"popup{k}.json"):
+                    wait = max(wait, left)
+                continue
+            if self.write(f"popup{k}.json", slot):
+                self.slot_written[k] = mono
+            self.slot_shape[k] = shape
+        if wait and not self.popup_source:
+            self.popup_source = GLib.timeout_add(wait, self.flush_popups_later)
+
+    def flush_popups_later(self):
+        self.popup_source = 0
+        self.changed()
+        return False
+
+    def flush_center(self):
+        self.center_source = 0
+        if self.write("center.json", self.center(time.time())):
+            self.center_written = time.monotonic()
+        return False
+
+    @staticmethod
+    def encode(obj):
+        return json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n"
+
+    def write(self, name, obj):
+        data = self.encode(obj)
+        if self.written.get(name) == data:
+            return False
+        try:
+            write_atomic(os.path.join(RUNTIME_DIR, name), data)
+            self.written[name] = data
+            return True
+        except OSError as e:
+            log(name, e)
+            return False
+
+    def item(self, n, now):
+        ts = n.get("ts", now)
+        actions = list(n.get("actions") or [])
+        if n.get("code"):
+            actions.insert(0, {"i": 0, "label": f"Copy {n['code']}"})
+        return {
+            "id": n.get("id", 0), "app": n.get("app", ""), "summary": n.get("summary", ""),
+            "body": n.get("body", ""), "text": n.get("text", ""),
+            "icon": self.existing(n.get("icon")) or self.fallback_icon,
+            "badge": self.existing(n.get("badge")), "urgency": n.get("urgency", 1),
+            "progress": n.get("progress", -1),
+            "actions": [{"i": a["i"], "label": a["label"]} for a in actions],
+            "has_default": bool(n.get("has_default")),
+            "time": relative(ts, now), "clock": time.strftime("%H:%M", time.localtime(ts)),
+        }
+
+    @staticmethod
+    def existing(path):
+        """path if the file is still there (history can outlive a cache or theme), else ""."""
+        return path if path and os.path.isfile(path) else ""
+
+    def group_key(self, n):
+        return (n.get("entry") or n.get("app_name") or n.get("app") or "").lower()
+
+    def center(self, now):
+        groups = {}
+        for i in self.history:
+            n = self.notifs[i]
+            key = self.group_key(n)
+            g = groups.get(key)
+            if g is None:
+                gid = self.gids.get(key)
+                if gid is None:
+                    self.next_gid += 1
+                    gid = self.gids[key] = self.next_gid
+                g = groups[key] = {"gid": gid, "app": n["app"],
+                                   "icon": self.existing(n.get("badge")) or self.existing(n.get("icon"))
+                                           or self.fallback_icon,
+                                   "count": 0, "expanded": key in self.expanded, "items": []}
+            g["count"] += 1
+            g["items"].append(self.item(n, now))
+        for key, g in groups.items():
+            if not g["expanded"]:
+                del g["items"][1:]    # collapsed: the newest card stands for the group
+        for key in [k for k in self.gids if k not in groups]:
+            del self.gids[key]        # gone from the center: no unbounded growth
+        self.expanded &= groups.keys()
+        return {"empty": not self.history, "groups": list(groups.values())}
+
+    def group_by_gid(self, gid):
+        key = next((k for k, v in self.gids.items() if v == gid), None)
+        return key, [i for i in self.history if self.group_key(self.notifs[i]) == key] if key is not None else []
+
+    # ---- popups and timers -------------------------------------------------
+
+    def popups_muted(self, n):
+        if self.center_open:
+            return True
+        return (self.dnd or bool(self.inhibitors)) and n["urgency"] != 2
+
+    def slot_of(self, nid):
+        return next((k for k, s in enumerate(self.slots) if s and s["id"] == nid), None)
+
+    def show_popup(self, n):
+        k = self.slot_of(n["id"])
+        if k is None and n["urgency"] == 2:
+            # critical popups never time out: one app gets at most
+            # CRITICAL_PER_APP slots, its oldest makes room
+            own = sorted((self.notifs[s["id"]]["ts"], j) for j, s in enumerate(self.slots)
+                         if s and not s["leaving"] and self.notifs[s["id"]]["urgency"] == 2
+                         and self.notifs[s["id"]]["app_name"] == n["app_name"])
+            if len(own) >= CRITICAL_PER_APP:
+                self.hide_popup(self.slots[own[0][1]]["id"])
+        if k is None:
+            k = next((k for k, s in enumerate(self.slots) if s is None), None)
+        if k is None:
+            # all slots busy: take one that is mid-exit, else retire the oldest
+            # non-critical popup
+            k = next((k for k, s in enumerate(self.slots) if s["leaving"]), None)
+            if k is None:
+                live = [(self.notifs[s["id"]]["ts"], k) for k, s in enumerate(self.slots)
+                        if self.notifs[s["id"]]["urgency"] != 2]
+                if not live:
+                    # all critical: an app may only replace its own, so one
+                    # misbehaving app can't hold the popups hostage forever
+                    live = [(self.notifs[s["id"]]["ts"], k) for k, s in enumerate(self.slots)
+                            if self.notifs[s["id"]]["app_name"] == n["app_name"]]
+                if not live:
+                    return False
+                k = min(live)[1]
+                self.hide_popup(self.slots[k]["id"])
+            self.drop_slot(k)
+        self.gen += 1
+        self.slots[k] = {"id": n["id"], "leaving": False, "close": False, "gen": self.gen}
+        self.start_timer(n)
+        return True
+
+    def start_timer(self, n):
+        self.stop_timer(n["id"])
+        ms = n["timeout"]
+        if ms <= 0:
+            return
+        if n["id"] in self.hovered:   # replaced while hovered: starts paused
+            self.timers[n["id"]] = {"source": 0, "deadline": 0.0, "remaining": ms / 1000}
+            return
+        self.timers[n["id"]] = {"source": GLib.timeout_add(ms, self.expire, n["id"]),
+                                "deadline": time.monotonic() + ms / 1000, "remaining": None}
+
+    def hold(self, nid):
+        """Pause a popup's timer while the pointer is on it."""
+        if self.slot_of(nid) is None:
+            return
+        self.hovered.add(nid)
+        t = self.timers.get(nid)
+        if t and t["source"]:
+            GLib.source_remove(t["source"])
+            t["source"] = 0
+            t["remaining"] = max(0.0, t["deadline"] - time.monotonic())
+
+    def release(self, nid):
+        self.hovered.discard(nid)
+        t = self.timers.get(nid)
+        if t and not t["source"]:
+            ms = max(HOLD_MIN_MS, int(t["remaining"] * 1000))
+            t["source"] = GLib.timeout_add(ms, self.expire, nid)
+            t["deadline"] = time.monotonic() + ms / 1000
+
+    def stop_timer(self, nid):
+        t = self.timers.pop(nid, None)
+        if t and t["source"]:
+            GLib.source_remove(t["source"])
+
+    def expire(self, nid):
+        self.timers.pop(nid, None)
+        n = self.notifs.get(nid)
+        if n is None:
+            return False
+        # Default timeouts only take the popup away: the notification stays in
+        # the center (persistence, as swaync does) and its actions keep working.
+        # An explicit expire_timeout from the app closes it for real.
+        self.hide_popup(nid, close=n["expires"])
+        return False
+
+    def hide_popup(self, nid, close=False):
+        """Animate a popup out. With close (always for transient notifications,
+        which have nowhere else to live) the notification is removed once the
+        slot is free."""
+        self.stop_timer(nid)
+        n = self.notifs.get(nid)
+        if n is None:
+            return
+        close = close or n["transient"]
+        k = self.slot_of(nid)
+        if k is None:
+            if close:
+                self.close_later(nid, EXPIRED)
+            return
+        s = self.slots[k]
+        s["close"] = s["close"] or close
+        if not s["leaving"]:
+            s["leaving"] = True
+            GLib.timeout_add(LEAVE_MS, self.free_slot, k, s["gen"])
+        self.changed()
+
+    def free_slot(self, k, gen):
+        s = self.slots[k]
+        if s and s["gen"] == gen:
+            self.drop_slot(k)
+        return False
+
+    def drop_slot(self, k):
+        s, self.slots[k] = self.slots[k], None
+        if s:
+            # the pointer may still be there, but over whatever takes the slot
+            # next, which got no enter event
+            self.hovered.discard(s["id"])
+            if s["close"]:
+                self.close_later(s["id"], EXPIRED)
+        self.changed()
+
+    def close_later(self, nid, reason):
+        """Remove from an idle callback: a close decided inside Notify must not
+        reach the app before the Notify reply carrying the id."""
+        n = self.notifs.get(nid)
+        def run():
+            if self.notifs.get(nid) is n:   # not replaced in the meantime
+                self.remove(nid, reason)
+            return False
+        GLib.idle_add(run)
+
+    def hide_all_popups(self):
+        for s in list(self.slots):
+            if s:
+                self.hide_popup(s["id"])
+
+    def sync_popup_window(self):
+        """Open the popup window when a burst starts, close it once it ended.
+
+        One open per burst, not per notification (eww leaks on open/close),
+        never while the center is open (it mutes popups), and never for slots
+        that are only animating out. The close waits POPUP_CLOSE_MS so a
+        notification right behind the last one reuses the open window.
+        Every `notif-popups open` goes through notif-popups' own "already
+        open?" check, so a wrong popups_open can only cost a no-op.
+        """
+        live = any(s and not s["leaving"] for s in self.slots)
+        if live or any(self.slots):
+            if self.popups_close_source:
+                GLib.source_remove(self.popups_close_source)
+                self.popups_close_source = 0
+            if live and not self.popups_open and not self.center_open:
+                self.popups_open = True
+                self.window.put([POPUPS_CMD, "open"], self.popup_window_opened)
+        elif self.popups_open and not self.popups_close_source:
+            self.popups_close_source = GLib.timeout_add(POPUP_CLOSE_MS, self.close_popup_window)
+
+    def popup_window_opened(self, rc):
+        """notif-popups open exits 3 when the window did not come up (eww down,
+        open failed). Forget asking, or a live critical would keep the burst
+        (and popups_open) going forever with no window; the next change
+        retries. A close queued since then already reset the flag itself."""
+        if rc != 0 and self.popups_open and any(s and not s["leaving"] for s in self.slots):
+            self.popups_open = False
+
+    def close_popup_window(self):
+        self.popups_close_source = 0
+        if not any(self.slots):
+            self.popups_open = False
+            self.window.put([POPUPS_CMD, "close"])
+        return False
+
+    # ---- notifications ------------------------------------------------------
+
+    def notify(self, sender, app_name, replaces_id, app_icon, summary, body, actions, hints, expire):
+        h = {}
+        for k in range(hints.n_children()):
+            entry = hints.get_child_value(k)
+            key = entry.get_child_value(0).get_string()
+            h[key] = entry.get_child_value(1).get_variant()
+        def hint(*names, default=None):
+            for name in names:
+                v = h.get(name)
+                if v is not None:
+                    try:
+                        return v.unpack()
+                    except Exception:  # noqa: BLE001
+                        pass
+            return default
+
+        app_name = clean(app_name, 100)
+        entry = clean(str(hint("desktop-entry", default="") or ""), 200)
+        entry_name, entry_icon = self.icons.desktop(entry)
+        try:
+            urgency = max(0, min(2, int(hint("urgency", default=1))))
+        except (TypeError, ValueError):
+            urgency = 1
+        progress = hint("value")
+        progress = max(0, min(100, int(progress))) if isinstance(progress, (int, float)) \
+            and not isinstance(progress, bool) and math.isfinite(progress) else -1
+        stack_tag = hint("x-canonical-private-synchronous", "x-dunst-stack-tag")
+        stack_tag = clean(stack_tag, 200) if isinstance(stack_tag, str) else ""
+
+        image = ""
+        raw = h.get("image-data") or h.get("image_data") or h.get("icon_data")
+        if raw is not None and raw.get_type_string() == "(iiibiiay)":
+            image = image_data_png(raw)
+        if not image:
+            path = hint("image-path", "image_path")
+            image = self.icons.lookup(path) if isinstance(path, str) else ""
+        app_path = self.icons.lookup(clean(app_icon, 1000)) or entry_icon
+        icon, badge = (image, app_path if app_path != image else "") if image else (app_path, "")
+
+        markup, text = to_markup(clean(body, BODY_MAX))
+        summary = " ".join(clean(summary, SUMMARY_MAX).split())
+        acts, has_default, i = [], False, 1
+        for key, label in zip(actions[0::2], actions[1::2]):
+            if key == "default":
+                has_default = True
+            elif key and key != "inline-reply" and len(acts) < ACTIONS_MAX \
+                    and len(key) <= ACTION_KEY_MAX:
+                acts.append({"i": i, "key": key, "label": clean(label, 60).replace("\n", " ") or key[:60]})
+                i += 1
+
+        nid = None
+        if replaces_id and replaces_id in self.notifs:
+            nid = replaces_id
+        elif stack_tag:
+            nid = next((k for k, n in self.notifs.items()
+                        if n.get("stack_tag") == stack_tag and n.get("app_name") == app_name), None)
+        if nid is None:
+            nid = self.next_id
+            self.next_id = self.next_id % 0xFFFFFFFF + 1
+
+        transient = bool(hint("transient", default=False))
+        timeout = TIMEOUTS[urgency] if expire < 0 else expire
+        n = {
+            "id": nid, "app": entry_name or app_name or "Notification", "app_name": app_name,
+            "entry": entry, "summary": summary, "body": markup, "text": text, "icon": icon,
+            "badge": badge, "urgency": urgency, "progress": progress, "actions": acts,
+            "has_default": has_default, "code": find_code(summary, text), "ts": time.time(),
+            "sender": sender, "resident": bool(hint("resident", default=False)),
+            "transient": transient, "stack_tag": stack_tag, "timeout": timeout,
+            "expires": expire > 0,
+        }
+        old = self.notifs.get(nid)
+        self.notifs[nid] = n
+        if nid in self.history:
+            self.history.remove(nid)
+        if not transient:
+            self.history.insert(0, nid)
+            for evicted in self.history[HISTORY_MAX:]:
+                self.remove(evicted, EXPIRED)
+        if old:
+            self.release_files(old)
+        if self.popups_muted(n) or not self.show_popup(n):
+            self.hide_popup(nid)
+        self.history_changed()
+        self.changed()
+        return nid
+
+    def remove(self, nid, reason):
+        n = self.notifs.pop(nid, None)
+        if n is None:
+            return
+        self.stop_timer(nid)
+        k = self.slot_of(nid)
+        if k is not None:
+            # Still on screen (×, a click, CloseNotification): animate it out
+            # from a snapshot instead of blanking the card mid-exit.
+            s = self.slots[k]
+            s["snapshot"] = self.item(n, time.time())
+            s["close"] = False
+            if not s["leaving"]:
+                s["leaving"] = True
+                GLib.timeout_add(LEAVE_MS, self.free_slot, k, s["gen"])
+        if nid in self.history:
+            self.history.remove(nid)
+            self.history_changed()
+        self.emit("NotificationClosed", GLib.Variant("(uu)", (nid, reason)))
+        self.release_files(n)
+        self.changed()
+
+    def emit(self, name, params):
+        try:
+            self.conn.emit_signal(None, NOTIF_PATH, NOTIF_IFACE, name, params)
+        except GLib.Error as e:
+            log("signal:", e)
+
+    def close_center(self):
+        """hide-on-action / hide-on-clear (swaync): the focusable center would
+        otherwise sit over the app it just raised and keep the keyboard."""
+        if self.center_open:
+            run_detached([[CENTER_CMD, "close"]])
+
+    def sender_pid(self, sender):
+        if not sender:
+            return 0
+        try:
+            return self.bus_call("GetConnectionUnixProcessID", (sender,), "(s)", "(u)")
+        except GLib.Error:
+            return 0
+
+    def invoke(self, nid, key):
+        n = self.notifs.get(nid)
+        if n is None:
+            return
+        if key == "default":
+            focus_app(self.sender_pid(n["sender"]), n["entry"], n["app_name"])
+        self.close_center()
+        if n["sender"]:
+            self.emit("ActionInvoked", GLib.Variant("(us)", (nid, key)))
+        if n["resident"]:
+            self.hide_popup(nid)
+        else:
+            self.remove(nid, DISMISSED)
+
+    # ---- D-Bus --------------------------------------------------------------
+
+    def on_call(self, conn, sender, path, iface, method, params, inv):
+        try:
+            result = self.dispatch(sender, iface, method, params)
+            inv.return_value(result)
+        except Exception as e:  # noqa: BLE001 — never let one call kill the server
+            log(f"{method}:", repr(e))
+            inv.return_dbus_error("org.freedesktop.DBus.Error.Failed", str(e))
+
+    def dispatch(self, sender, iface, method, params):
+        if iface == NOTIF_IFACE:
+            if method == "Notify":
+                c = params.get_child_value
+                return GLib.Variant("(u)", (self.notify(
+                    sender, c(0).get_string(), c(1).get_uint32(), c(2).get_string(),
+                    c(3).get_string(), c(4).get_string(), c(5).unpack(), c(6), c(7).get_int32()),))
+            if method == "CloseNotification":
+                self.remove(params.unpack()[0], CLOSED)
+                return None
+            if method == "GetCapabilities":
+                return GLib.Variant("(as)", (CAPABILITIES,))
+            if method == "GetServerInformation":
+                return GLib.Variant("(ssss)", ("notifd", "dotfiles", "1.0", "1.3"))
+        elif iface == CTL_IFACE:
+            args = params.unpack()
+            self.changed(user=True)
+            if method == "Dismiss":
+                self.remove(args[0], DISMISSED)
+            elif method == "Invoke":
+                nid, i = args
+                n = self.notifs.get(nid)
+                if n and i == 0 and n.get("code"):
+                    run_detached([["wl-copy", "--", n["code"]]])
+                    self.hide_popup(nid)
+                elif n:
+                    key = next((a["key"] for a in n["actions"] if a["i"] == i), None)
+                    if key is not None:
+                        self.invoke(nid, key)
+            elif method == "InvokeDefault":
+                n = self.notifs.get(args[0])
+                if n and n["has_default"]:
+                    self.invoke(args[0], "default")
+                elif n:
+                    self.remove(args[0], DISMISSED)
+            elif method == "Clear":
+                for nid in list(self.history):
+                    self.remove(nid, DISMISSED)
+                self.close_center()
+            elif method == "ClearGroup":
+                for nid in self.group_by_gid(args[0])[1]:
+                    self.remove(nid, DISMISSED)
+            elif method == "ToggleGroup":
+                key = self.group_by_gid(args[0])[0]
+                if key is not None:
+                    self.expanded ^= {key}
+                    self.changed()
+            elif method == "SetDnd":
+                self.dnd = self.mode(args[0], self.dnd)
+                if self.dnd:
+                    for s in list(self.slots):
+                        n = self.notifs.get(s["id"]) if s else None
+                        if n and n["urgency"] != 2:
+                            self.hide_popup(s["id"])
+                self.history_changed()
+                self.changed()
+                return GLib.Variant("(b)", (self.dnd,))
+            elif method == "Inhibit":
+                op, name = args
+                if op == "add":
+                    self.inhibitors[name] = self.inhibitors.get(name, 0) + 1
+                elif op == "remove" and name in self.inhibitors:
+                    self.inhibitors[name] -= 1
+                    if not self.inhibitors[name]:
+                        del self.inhibitors[name]
+                else:
+                    raise ValueError(f"inhibit: {op!r}")
+                self.changed()
+            elif method == "Hold":
+                self.hold(args[0])
+            elif method == "Release":
+                self.release(args[0])
+            elif method == "Reopen":
+                # eww was restarted (launch-eww-bars): its popup window is gone,
+                # and so is the pointer that would have sent the Releases
+                for nid in list(self.hovered):
+                    self.release(nid)
+                self.popups_open = False   # flush -> sync_popup_window reopens
+            elif method == "SetCenter":
+                self.center_open = self.mode(args[0], self.center_open)
+                if self.center_open:
+                    self.hide_all_popups()
+                    if not self.tick_source:
+                        self.tick_source = GLib.timeout_add_seconds(60, self.tick)
+                elif self.tick_source:
+                    GLib.source_remove(self.tick_source)
+                    self.tick_source = 0
+                self.changed()
+                return GLib.Variant("(b)", (self.center_open,))
+            return None
+        raise ValueError(f"unknown method {iface}.{method}")
+
+    @staticmethod
+    def mode(arg, current):
+        if arg == "toggle":
+            return not current
+        if arg in ("on", "open"):
+            return True
+        if arg in ("off", "close"):
+            return False
+        raise ValueError(f"bad mode {arg!r}")
+
+    def tick(self):
+        self.changed()  # relative timestamps in the open center
+        return True
+
+    def start(self):
+        # The control interface lives on a second connection: objects answer on
+        # every name their connection owns, so on the shared one any client
+        # allowed to reach org.freedesktop.Notifications (a sandboxed app)
+        # could also Invoke other apps' actions or switch DND.
+        self.conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        self.ctl_conn = Gio.DBusConnection.new_for_address_sync(
+            Gio.dbus_address_get_for_bus_sync(Gio.BusType.SESSION, None),
+            Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT
+            | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+        node = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION)
+        self.conn.register_object(NOTIF_PATH, node.lookup_interface(NOTIF_IFACE), self.on_call)
+        self.ctl_conn.register_object(CTL_PATH, node.lookup_interface(CTL_IFACE), self.on_call)
+        self.restored_senders()
+        flags = Gio.BusNameOwnerFlags.DO_NOT_QUEUE
+        for conn, name in ((self.conn, NOTIF_IFACE), (self.ctl_conn, CTL_NAME)):
+            Gio.bus_own_name_on_connection(conn, name, flags, self.name_acquired(name),
+                                           self.name_lost(name))
+        self.flush()
+
+    def name_acquired(self, name):
+        def acquired(conn, _name):
+            # a popup window left open by a notifd that died mid-burst would
+            # sit there empty (the slots it shows are gone); only the instance
+            # that owns the name may touch it
+            if name == NOTIF_IFACE:
+                self.window.put([POPUPS_CMD, "close"])
+        return acquired
+
+    def name_lost(self, name):
+        def lost(conn, _name):
+            log(f"could not own {name} (another notification server running?)")
+            self.stop(1)
+        return lost
+
+    def stop(self, code=0):
+        if self.history_source:
+            GLib.source_remove(self.history_source)
+            self.save_history()
+        if self.popups_open:
+            # nobody would close it after we are gone; through the queue, or
+            # an open still waiting in it would land after the close
+            self.popups_open = False
+            self.window.put([POPUPS_CMD, "close"])
+            if not self.window.drain(6):
+                # an open stuck in hyprctl/eww must not outlive us and open
+                # a window nobody closes: kill it, then let the close run
+                self.window.kill_current()
+                if not self.window.drain(6):
+                    self.window.kill_current()
+        self.exit_code = code
+        self.loop.quit()
+
+
+def main():
+    os.umask(0o077)   # history holds message bodies and 2FA codes; eww runs as the same user
+    loop = GLib.MainLoop()
+    d = Notifd(loop)
+    d.exit_code = 0
+    try:
+        gi.require_version("GLibUnix", "2.0")
+        from gi.repository import GLibUnix
+        signal_add = GLibUnix.signal_add
+    except (ImportError, ValueError):
+        signal_add = GLib.unix_signal_add
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal_add(GLib.PRIORITY_DEFAULT, sig, lambda: d.stop() or False)
+    d.start()
+    loop.run()
+    sys.exit(d.exit_code)
+
+
+if __name__ == "__main__":
+    main()

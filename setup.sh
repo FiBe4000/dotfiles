@@ -96,10 +96,12 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   link_dir $dotfilespath/config/eww/scripts $home/.config/eww/scripts
   link_dir $dotfilespath/config/eww/widgets $home/.config/eww/widgets
   link_dir $dotfilespath/config/eww/styles  $home/.config/eww/styles
-  sudo -u $user mkdir -p $home/.config/swaync
-  sudo -u $user ln -sfn $dotfilespath/config/swaync/config.json                      $home/.config/swaync/config.json
-  sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css
-  sudo -u $user ln -sfn $dotfilespath/config/swaync/style.css                        $home/.config/swaync/style.css
+  # swaync is replaced by notifd + the eww center/popups (see the notifd block
+  # below); its config stays in the repo for now, just not installed.
+#  sudo -u $user mkdir -p $home/.config/swaync
+#  sudo -u $user ln -sfn $dotfilespath/config/swaync/config.json                      $home/.config/swaync/config.json
+#  sudo -u $user ln -sfn $dotfilespath/config/swaync/colors.css                       $home/.config/swaync/colors.css
+#  sudo -u $user ln -sfn $dotfilespath/config/swaync/style.css                        $home/.config/swaync/style.css
   sudo -u $user ln -sfn $dotfilespath/config/uwsm/env                               $home/.config/uwsm/env
 
   # environment.d: read by the systemd user manager, so under uwsm these reach
@@ -168,8 +170,26 @@ if [ "$cont" = "y" ] || [ "$cont" = "Y" ]; then
   sudo -u $user ln -sfn /usr/lib/systemd/user/ssh-agent.socket                       $home/.config/systemd/user/sockets.target.wants/ssh-agent.socket
   sudo -u $user ln -sfn /usr/lib/systemd/user/plasma-kwallet-pam.service             $home/.config/systemd/user/graphical-session.target.wants/plasma-kwallet-pam.service
   sudo -u $user ln -sfn $dotfilespath/config/systemd/user/plasma-kwallet-pam.service.d/10-after-env.conf $home/.config/systemd/user/plasma-kwallet-pam.service.d/10-after-env.conf
+  # notifd (scripts/notifd) is the notification server for the eww bar/center/
+  # popups. The dbus-1 file in ~/.local/share outranks /usr/share's swaync and
+  # Plasma activation files and routes activation through the same unit as the
+  # hyprland.lua autostart. swaync.service claims the same BusName, so systemd
+  # refuses to load notifd.service until it is masked (to go back to swaync:
+  # remove that link and the dbus-1 file, restore its autostart line).
+  # The eww side (widgets/notifications.yuck, scripts/notif-*, notifd-listen,
+  # styles/_notifications.scss) comes in through the eww link_dirs above, and
+  # scripts/notifd + scripts/notifctl are run from $HOME/.dotfiles/scripts.
+  # Needs: python-gobject, gtk3, gdk-pixbuf2 (notifd); inotify-tools, jq (eww
+  # listeners and scripts); wl-clipboard (2FA "Copy" action); systemd's busctl.
+  sudo -u $user mkdir -p $home/.local/share/dbus-1/services
+  sudo -u $user ln -sfn $dotfilespath/config/systemd/user/notifd.service             $home/.config/systemd/user/notifd.service
+  sudo -u $user ln -sfn $dotfilespath/local/share/dbus-1/services/org.freedesktop.Notifications.service $home/.local/share/dbus-1/services/org.freedesktop.Notifications.service
+  sudo -u $user ln -sfn /dev/null                                                    $home/.config/systemd/user/swaync.service
 
-  echo "done. Unit symlinks changed; run 'systemctl --user daemon-reload' or re-login."
+  echo "done. Unit and D-Bus service symlinks changed; re-login, or run"
+  echo "  systemctl --user daemon-reload"
+  echo "  busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig"
+  echo "  systemctl --user start notifd.service"
 else
   echo "No changes made to config files."
 fi

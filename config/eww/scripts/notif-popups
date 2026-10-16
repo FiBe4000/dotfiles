@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Notification popup window (widgets/notifications.yuck): notif-popups open|close
+#
+# Only scripts/notifd runs this, one call at a time and in order: `open` when
+# the first popup of a burst arrives (or on `notifctl reopen` after an eww
+# restart), `close` ~300 ms after the last one has animated out. The cards
+# themselves come and go inside the open window (revealers on popup<k>.json).
+#
+# The window is non-focusable and opened on the focused monitor, like the OSD.
+# An open window is never reopened: `eww open` on an open instance recreates
+# the surface (flicker, and the layer slide-in replays over live cards).
+
+set -u
+
+# NOTIF_EWW_CONFIG: run against a sandbox eww daemon (`eww -c <dir>`) for testing.
+# Every call is bounded: notifd runs these one at a time, so a hung eww client
+# (or hyprctl) would hold up every later open/close (and pile up as a leaked
+# process).
+# --foreground keeps timeout in our process group (plain timeout makes its
+# own), so notifd's killpg of a stuck call also takes the eww/hyprctl client.
+eww() { timeout --foreground 5 eww ${NOTIF_EWW_CONFIG:+-c "$NOTIF_EWW_CONFIG"} "$@"; }
+hyprctl() { timeout --foreground 5 hyprctl "$@"; }
+
+# A missing or wedged daemon must never be started from here (`eww open`
+# auto-daemonises; a wedged daemon answers rc 0 with empty output, or hangs
+# into the timeout). notifd asks again through `notifctl reopen` once
+# launch-eww-bars has eww back.
+eww_up() { [ "$(eww ping 2>/dev/null)" = pong ]; }
+
+rt=${XDG_RUNTIME_DIR:-/tmp}
+state_dir=${NOTIFD_RUNTIME_DIR:-$rt/notifd}
+
+listed() { eww active-windows 2>/dev/null | grep -q '^notif_popups:'; }
+
+# eww can keep listing the window after its layer is gone (docked
+# suspend/resume, as with the bars in launch-eww-bars), and Hyprland keeps a
+# closed layer listed with pid -1 while its unmap animation is pending (for a
+# long time with the displays off). Only a layer with a live client counts.
+mapped() {
+    hyprctl layers -j | jq -e '[.[].levels[][]
+        | select(.namespace == "eww-notif-popups" and .pid > 0)] | length > 0' >/dev/null
+}
+
+focused_idx() {
+    # GDK monitor index of the focused monitor; same assumption as the OSD,
+    # notif-center and launch-eww-bars (hyprctl lists monitors in GDK's order)
+    hyprctl monitors -j | jq -r 'map(.focused) | index(true) // 0'
+}
+
+# Exit status 3: the window is not up (eww down, or the open failed), so
+# notifd forgets it asked and opens on its next change; 0 otherwise.
+do_open() {
+    eww_up || return 3
+    if listed; then
+        mapped && return 0
+        # listed but its layer is gone: a stale entry that would make every
+        # open a no-op until the burst ends
+        eww close notif_popups >/dev/null 2>&1
+    fi
+    local idx k f size seed=()
+    idx=$(focused_idx)
+    [[ $idx =~ ^[0-9]+$ ]] || idx=0
+    # Seed the slots from notifd's per-slot files: the deflistens only start
+    # with the window, and their :initial shape would open an empty window that
+    # then slides every card in at once. Each value stays below the kernel's
+    # 128 KiB per-argument limit (a bigger slot just fills from its listener).
+    for k in 0 1 2 3 4; do   # SLOTS in notifd
+        f=$state_dir/popup$k.json
+        size=$(stat -c %s "$f" 2>/dev/null) || size=
+        if [[ $size =~ ^[0-9]+$ ]] && (( size < 100000 )); then
+            seed+=("notif_popup$k=$(<"$f")")
+        fi
+    done
+    (( ${#seed[@]} )) && eww update "${seed[@]}"
+    eww open notif_popups --screen "$idx" >/dev/null 2>&1 || return 3
+}
+
+do_close() {
+    # only if eww has it: closing a closed window logs an error in eww
+    if eww_up && listed; then
+        eww close notif_popups >/dev/null 2>&1 || true
+    fi
+}
+
+case "${1:-}" in
+    open)  do_open ;;
+    close) do_close ;;
+    *)     echo "usage: notif-popups open|close" >&2; exit 2 ;;
+esac
